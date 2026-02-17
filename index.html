@@ -210,7 +210,7 @@
   <div class="wrap">
     <div class="split">
       <div>
-        <h1 id="appTitle">StockOpname by Diko</h1>
+        <h1 id="appTitle">Inventory & WIP</h1>
         <div class="muted" id="appSubtitle">Sistem stok (Inbound/Usage), WIP, dan rekomendasi kebutuhan bulanan.</div>
       </div>
       <div class="pill" id="userPill">Not logged in</div>
@@ -294,8 +294,8 @@
       <div class="card">
         <div class="split">
           <div class="nav">
-            <button class="btn active" id="pageBtnOps" onclick="showPage('ops')">Operasional</button>
-            <button class="btn" id="pageBtnEval" onclick="showPage('eval')">Evaluasi</button>
+            <button class="btn active" id="pageBtnOps" onclick="showPage('ops')">Laman 1 • Operasional</button>
+            <button class="btn" id="pageBtnEval" onclick="showPage('eval')">Laman 2 • Evaluasi</button>
           </div>
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <button class="btn" id="btnRefresh" onclick="refreshAll()">Refresh</button>
@@ -439,20 +439,21 @@
         </div>
 
         <!-- ITEMS TAB -->
-        <div id="tab Items" class="hidden">
+        <div id="tabItems" class="hidden">
           <div class="row">
             <div class="col card">
               <div class="split">
                 <div>
-                  <h2 id="item Form Title">Tambah Item</h2>
+                  <h2 id="itemFormTitle">Tambah Item</h2>
+                  <div class="muted">Master item bisa di-edit langsung dari webapp.</div>
                 </div>
                 <div class="pill">Master Data</div>
               </div>
 
-              <label>Item Code</label>
+              <label>ItemCode <span class="muted">(unik)</span></label>
               <input id="itCode" placeholder="POW-HVOF" />
 
-              <label>Item Name</label>
+              <label>ItemName</label>
               <input id="itName" placeholder="Powder HVOF A" />
 
               <label>Category</label>
@@ -463,37 +464,37 @@
 
               <div class="row">
                 <div class="col">
-                  <label>Opening Stock</label>
+                  <label>OpeningStock</label>
                   <input id="itOpen" type="number" step="0.001" placeholder="0" />
                 </div>
                 <div class="col">
-                  <label>Unit Cost</label>
+                  <label>UnitCost</label>
                   <input id="itCost" type="number" step="0.01" placeholder="0" />
                 </div>
               </div>
 
               <div class="row">
                 <div class="col">
-                  <label>Lead Time Days</label>
+                  <label>LeadTimeDays</label>
                   <input id="itLT" type="number" step="1" placeholder="7" />
                 </div>
                 <div class="col">
-                  <label>Avg Monthly Usage</label>
+                  <label>AvgMonthlyUsage</label>
                   <input id="itAvg" type="number" step="0.001" placeholder="10" />
                 </div>
               </div>
 
               <div class="row">
                 <div class="col">
-                  <label>Safety Stock</label>
+                  <label>SafetyStock</label>
                   <input id="itSafety" type="number" step="0.001" placeholder="2" />
                 </div>
                 <div class="col">
-                  <label>Min Stock (opsional)</label>
+                  <label>MinStock (opsional)</label>
                   <input id="itMin" type="number" step="0.001" placeholder="0" />
                 </div>
                 <div class="col">
-                  <label>Max Stock (opsional)</label>
+                  <label>MaxStock (opsional)</label>
                   <input id="itMax" type="number" step="0.001" placeholder="0" />
                 </div>
               </div>
@@ -530,8 +531,8 @@
                 <table>
                   <thead>
                     <tr>
-                      <th>Item Code</th><th>Item Name</th><th>Category</th><th>Unit</th>
-                      <th class="right">Lead Time</th><th class="right">Avg/Mo</th><th class="right">Safety</th>
+                      <th>ItemCode</th><th>ItemName</th><th>Category</th><th>Unit</th>
+                      <th class="right">LeadTime</th><th class="right">Avg/Mo</th><th class="right">Safety</th>
                       <th>Aksi</th>
                     </tr>
                   </thead>
@@ -551,7 +552,7 @@
               <div class="split">
                 <div>
                   <h2 id="inFormTitle">Input Inbound</h2>
-                  <div class="muted"></div>
+                  <div class="muted">Inbound bisa di-edit dari webapp.</div>
                 </div>
                 <div class="pill">Inbound</div>
               </div>
@@ -559,13 +560,13 @@
               <label>Date</label>
               <input id="inDate" type="date" />
 
-              <label>Item Code</label>
+              <label>ItemCode</label>
               <select id="inItem"></select>
 
               <label>Qty <span class="muted">(wajib &gt; 0)</span></label>
               <input id="inQty" type="number" step="0.001" placeholder="0" />
 
-              <label>Unit Cost (opsional)</label>
+              <label>UnitCost (opsional)</label>
               <input id="inCost" type="number" step="0.01" placeholder="0" />
 
               <label>Supplier (opsional)</label>
@@ -596,7 +597,7 @@
               <div style="overflow:auto; max-height: 680px; border-radius: 14px;">
                 <table>
                   <thead>
-                    <tr><th>Tanggal</th><th>Item Code</th><th class="right">Qty</th><th class="right">Unit Cost</th><th>Supplier</th><th>Aksi</th></tr>
+                    <tr><th>Tanggal</th><th>ItemCode</th><th class="right">Qty</th><th class="right">UnitCost</th><th>Supplier</th><th>Aksi</th></tr>
                   </thead>
                   <tbody id="inboundTbody"></tbody>
                 </table>
@@ -613,7 +614,7 @@
               <div class="split">
                 <div>
                   <h2 id="usFormTitle">Input Usage</h2>
-                  <div class="muted"></div>
+                  <div class="muted">Usage bisa di-edit dari webapp.</div>
                 </div>
                 <div class="pill">Usage</div>
               </div>
@@ -652,7 +653,7 @@
               <div style="overflow:auto; max-height: 680px; border-radius: 14px;">
                 <table>
                   <thead>
-                    <tr><th>Tanggal</th><th>Item Code</th><th class="right">Qty</th><th>Notes</th><th>Aksi</th></tr>
+                    <tr><th>Tanggal</th><th>ItemCode</th><th class="right">Qty</th><th>Notes</th><th>Aksi</th></tr>
                   </thead>
                   <tbody id="usageTbody"></tbody>
                 </table>
@@ -674,13 +675,13 @@
                 <div class="pill">WIP</div>
               </div>
 
-              <label>In Date</label>
+              <label>InDate</label>
               <input id="wipInDate" type="date" />
 
-              <label>Component Code (opsional)</label>
+              <label>ComponentCode (opsional)</label>
               <input id="wipCompCode" placeholder="COMP-001" />
 
-              <label>Component Name</label>
+              <label>ComponentName</label>
               <input id="wipCompName" placeholder="Nozzle / Shaft / Housing / ..." />
 
               <label>Stage</label>
@@ -1797,8 +1798,8 @@
       const res = await apiCall('config.get', {});
       config = res.config || null;
       if(config){
-        document.getElementById('appTitle').textContent = config.APP_NAME || 'StockOpname by Diko';
-        const sub = config.COMPANY_NAME ? `Sistem stok + WIP untuk ${config.COMPANY_NAME}.` : 'Sistem stok (Inbound/Usage), WIP dan rekomendasi kebutuhan bulanan.';
+        document.getElementById('appTitle').textContent = config.APP_NAME || 'Inventory & WIP';
+        const sub = config.COMPANY_NAME ? `Sistem stok + WIP untuk ${config.COMPANY_NAME}.` : 'Sistem stok (Inbound/Usage), WIP, dan rekomendasi kebutuhan bulanan.';
         document.getElementById('appSubtitle').textContent = sub;
         document.title = config.APP_NAME || document.title;
 
