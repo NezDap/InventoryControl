@@ -2451,51 +2451,58 @@
       if(e.key === 'Enter' && !document.getElementById('loginView').classList.contains('hidden')){
         login();
       }
-    });
-    // Restore session (Supabase)
-    (async () => {
+    });  // Restore session (Supabase)
+  try{
+    const s = ensureSupabase();
+    const { data: sessData } = await s.auth.getSession();
+
+    if(sessData && sessData.session){
+      token = sessData.session.access_token || '';
+      if(token) localStorage.setItem('inv_token', token);
+
+      setOverlay(true, 'Memulihkan sesi...');
       try{
+        const res = await apiCall('me', {});
+        if(res.ok){
+          me = res.user;
+          setUserPill();
 
-      const s = ensureSupabase();
-      const { data: sessData } = await s.auth.getSession();
-      if(sessData && sessData.session){
-        token = sessData.session.access_token || '';
-        if(token) localStorage.setItem('inv_token', token);
+          document.getElementById('loginView').classList.add('hidden');
+          document.getElementById('mainView').classList.remove('hidden');
 
-        setOverlay(true, 'Memulihkan sesi...');
-        try{
-          const res = await apiCall('me', {});
-          if(res.ok){
-            me = res.user;
-            setUserPill();
+          initMonthPicker();
+          seedForms();
 
-            document.getElementById('loginView').classList.add('hidden');
-            document.getElementById('mainView').classList.remove('hidden');
+          const lastPage = localStorage.getItem('inv_last_page') || 'ops';
+          showPage(lastPage);
 
-            initMonthPicker();
+          const lastTab = localStorage.getItem('inv_last_tab') || 'dashboard';
+          showTab(lastTab);
 
-            const lastPage = localStorage.getItem('inv_last_page') || 'ops';
-            showPage(lastPage);
-
-            const lastTab = localStorage.getItem('inv_last_tab') || 'dashboard';
-            showTab(lastTab);
-
-            await refreshAll();
-          } else {
-            logout(true);
-          }
-        }catch(e){
-          logout(true);
-        }finally{
-          setOverlay(false);
+          await refreshAll();
+        } else {
+          await s.auth.signOut();
+          token = '';
+          localStorage.removeItem('inv_token');
         }
-      }
       }catch(e){
-        // ignore
+        await s.auth.signOut();
+        token = '';
+        localStorage.removeItem('inv_token');
+      }finally{
+        setOverlay(false);
       }
-    })();
-}
+    } else {
+      seedForms();
+    }
+  }catch(e){
+    // Supabase belum dikonfigurasi / error jaringan, tetap biarkan UI login tampil
+    seedForms();
+  }
+
+})();}
   })();
 </script>
+
 </body>
 </html>
