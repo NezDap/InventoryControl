@@ -2041,20 +2041,35 @@
     setOverlay(true, 'Login...');
 
     try{
-      const res = await apiCall('bootstrapAdmin', { userId, displayName, password });
+      const res = await apiCall('login', { userId, password });
       if(!res.ok){
-        toast(res.message || 'Gagal membuat admin');
+        toast(res.message || 'Login gagal');
         return;
       }
 
-      toast('Admin dibuat. Silakan login.');
-      toggleBootstrap();
+      me = res.user;
+      setUserPill();
+
+      document.getElementById('loginView').classList.add('hidden');
+      document.getElementById('mainView').classList.remove('hidden');
+
+      initMonthPicker();
+      seedForms();
+
+      const lastPage = localStorage.getItem('inv_last_page') || 'ops';
+      showPage(lastPage);
+
+      const lastTab = localStorage.getItem('inv_last_tab') || 'dashboard';
+      showTab(lastTab);
+
+      await refreshAll();
     }catch(e){
       toast('Error: ' + (e.message || e));
     }finally{
       setOverlay(false);
     }
   }
+
   async function register(){
     const userId = document.getElementById('loginUserId').value.trim();
     const password = document.getElementById('loginPass').value.trim();
@@ -2080,7 +2095,22 @@
       setOverlay(false);
     }
   }
-  // ====== Actions: Items (Add/Edit) ======
+  
+async function logout(silent){
+  try{ await apiCall('logout', {}); }catch(e){}
+  me = null;
+  token = '';
+  localStorage.removeItem('inv_token');
+
+  // reset UI
+  document.getElementById('mainView').classList.add('hidden');
+  document.getElementById('loginView').classList.remove('hidden');
+  setUserPill();
+
+  if(!silent) toast('Logout.');
+}
+
+// ====== Actions: Items (Add/Edit) ======
   function editItem(itemCode){
     const it = (itemsCache||[]).find(x => x.ItemCode === itemCode);
     if(!it) return;
@@ -2446,61 +2476,63 @@
   (async function boot(){
     setUserPill();
 
-    // Enter to login
+    // Enter to login (hanya saat masih di loginView)
     document.addEventListener('keydown', (e)=>{
       if(e.key === 'Enter' && !document.getElementById('loginView').classList.contains('hidden')){
         login();
       }
-    });  // Restore session (Supabase)
-  try{
-    const s = ensureSupabase();
-    const { data: sessData } = await s.auth.getSession();
+    });
 
-    if(sessData && sessData.session){
-      token = sessData.session.access_token || '';
-      if(token) localStorage.setItem('inv_token', token);
+    // Restore session (Supabase)
+    try{
+      const s = ensureSupabase();
+      const { data: sessData } = await s.auth.getSession();
 
-      setOverlay(true, 'Memulihkan sesi...');
-      try{
-        const res = await apiCall('me', {});
-        if(res.ok){
-          me = res.user;
-          setUserPill();
+      if(sessData && sessData.session){
+        token = sessData.session.access_token || '';
+        if(token) localStorage.setItem('inv_token', token);
 
-          document.getElementById('loginView').classList.add('hidden');
-          document.getElementById('mainView').classList.remove('hidden');
+        setOverlay(true, 'Memulihkan sesi...');
+        try{
+          const res = await apiCall('me', {});
+          if(res.ok){
+            me = res.user;
+            setUserPill();
 
-          initMonthPicker();
-          seedForms();
+            document.getElementById('loginView').classList.add('hidden');
+            document.getElementById('mainView').classList.remove('hidden');
 
-          const lastPage = localStorage.getItem('inv_last_page') || 'ops';
-          showPage(lastPage);
+            initMonthPicker();
+            seedForms();
 
-          const lastTab = localStorage.getItem('inv_last_tab') || 'dashboard';
-          showTab(lastTab);
+            const lastPage = localStorage.getItem('inv_last_page') || 'ops';
+            showPage(lastPage);
 
-          await refreshAll();
-        } else {
+            const lastTab = localStorage.getItem('inv_last_tab') || 'dashboard';
+            showTab(lastTab);
+
+            await refreshAll();
+          } else {
+            await s.auth.signOut();
+            token = '';
+            localStorage.removeItem('inv_token');
+            seedForms();
+          }
+        }catch(e){
           await s.auth.signOut();
           token = '';
           localStorage.removeItem('inv_token');
+          seedForms();
+        }finally{
+          setOverlay(false);
         }
-      }catch(e){
-        await s.auth.signOut();
-        token = '';
-        localStorage.removeItem('inv_token');
-      }finally{
-        setOverlay(false);
+      } else {
+        seedForms();
       }
-    } else {
+    }catch(e){
+      // Supabase belum dikonfigurasi / error jaringan, biarkan UI login tampil
       seedForms();
     }
-  }catch(e){
-    // Supabase belum dikonfigurasi / error jaringan, tetap biarkan UI login tampil
-    seedForms();
-  }
-
-})();}
   })();
 </script>
 
