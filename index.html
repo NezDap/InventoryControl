@@ -1547,6 +1547,32 @@
   function toggleBootstrap(){
     document.getElementById('bootstrapBox').classList.toggle('hidden');
   }
+  async function bootstrapAdmin(){
+    const userId = (document.getElementById('bootUserId')?.value || '').trim();
+    const displayName = (document.getElementById('bootName')?.value || userId || 'Admin').trim();
+    const password = (document.getElementById('bootPass')?.value || '').trim();
+
+    if(!userId || !password){
+      toast('User ID dan password wajib diisi.');
+      return;
+    }
+
+    setOverlay(true, 'Membuat akun...');
+
+    try{
+      const res = await apiCall('bootstrapAdmin', { userId, displayName, password });
+      if(!res.ok){
+        toast(res.message || 'Gagal membuat akun');
+        return;
+      }
+      toast('Akun dibuat. Silakan login.');
+      toggleBootstrap();
+    }catch(e){
+      toast('Error: ' + (e.message || e));
+    }finally{
+      setOverlay(false);
+    }
+  }
 
   function showPage(page){
     document.getElementById('pageOps').classList.toggle('hidden', page !== 'ops');
@@ -2427,7 +2453,9 @@
       }
     });
     // Restore session (Supabase)
-    try{
+    (async () => {
+      try{
+
       const s = ensureSupabase();
       const { data: sessData } = await s.auth.getSession();
       if(sessData && sessData.session){
@@ -2462,10 +2490,11 @@
           setOverlay(false);
         }
       }
-    }catch(e){
-      // ignore
-    }
-    }
+      }catch(e){
+        // ignore
+      }
+    })();
+}
   })();
 </script>
 
