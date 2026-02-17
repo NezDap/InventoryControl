@@ -1,1366 +1,2473 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 <head>
   <base target="_top">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sistem Tabungan</title>
+  <title>Inventory & WIP</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     :root{
       --bg:#ffffff;
-      --text:#0f0f14;
-      --muted:#6b7280;         /* abu */
-      --line:#e5e7eb;          /* abu muda */
-      --accent:#9ca3af;        /* abu accent */
-      --purple:#6d28d9;        /* ungu sekunder */
-      --purple2:#7c3aed;
       --card:#ffffff;
-      --shadow: 0 12px 35px rgba(17, 24, 39, .10);
+      --text:#0b1020;
+      --muted:#5a647a;
+      --line:rgba(10,15,30,.12);
+      --shadow: 0 12px 28px rgba(15,23,42,.10);
+
+      --accent:#2563eb;
+      --accent2:#7c3aed;
+      --danger:#dc2626;
+      --warn:#d97706;
+      --ok:#059669;
+
       --radius:16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+
+      --chartText:#111827;
+      --chartGrid:rgba(17,24,39,.10);
     }
+
     *{ box-sizing:border-box; }
     body{
       margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      font-family:var(--sans);
       background: var(--bg);
-      color: var(--text);
+      color:var(--text);
     }
-    a{ color: var(--purple); text-decoration:none; }
-    .wrap{ max-width:1100px; margin:0 auto; padding:22px; }
-    .topbar{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:14px 18px; border:1px solid var(--line); border-radius: var(--radius);
-      background: var(--card); box-shadow: var(--shadow);
-      position: sticky; top: 12px; z-index: 5;
-    }
-    .brand{ display:flex; gap:10px; align-items:center; }
-    .logoDot{
-      width:14px; height:14px; border-radius:50%;
-      background: var(--purple);
-      box-shadow: 0 0 0 4px rgba(109,40,217,.15);
-    }
-    .brandTitle{ font-weight:800; letter-spacing:.2px; }
-    .pill{
-      border:1px solid var(--line);
-      color: var(--muted);
-      padding:8px 10px; border-radius:999px;
-      font-size:12px;
-      display:flex; gap:8px; align-items:center;
-    }
-    .btn{
-      border:1px solid var(--line);
-      background: #fff;
-      padding:10px 12px; border-radius:12px;
-      cursor:pointer;
-      font-weight:650;
-      transition: transform .08s ease, box-shadow .2s ease;
-    }
-    .btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 22px rgba(17, 24, 39, .08); }
-    .btn.primary{
-      background: var(--purple);
-      border-color: var(--purple);
-      color:#fff;
-    }
-    .btn.danger{
-      background:#fff;
-      border-color:#fecaca;
-      color:#b91c1c;
-    }
-    .btn.ghost{
-      background: transparent;
-    }
-    .grid{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap:18px;
-      margin-top:18px;
-    }
-    @media (max-width: 940px){
-      .grid{ grid-template-columns: 1fr; }
-      .topbar{ position: static; }
-    }
+    a{ color:inherit; text-decoration:none; }
+    .wrap{ max-width:1280px; margin:0 auto; padding:22px; }
+
     .card{
-      border:1px solid var(--line);
-      border-radius: var(--radius);
       background: var(--card);
-      box-shadow: var(--shadow);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
       padding:16px;
     }
-    .card h2{ margin:0 0 8px; font-size:16px; }
-    .muted{ color: var(--muted); font-size:13px; line-height:1.4; }
-    .tabs{
-      display:flex; flex-wrap:wrap; gap:10px;
-      margin-top:14px;
+
+    .row{ display:flex; gap:16px; flex-wrap:wrap; }
+    .col{ flex:1; min-width:280px; }
+
+    h1{ margin:0 0 4px; font-size:22px; letter-spacing:.2px; }
+    h2{ margin:0; font-size:16px; letter-spacing:.2px; }
+    .muted{ color:var(--muted); }
+
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(37,99,235,.06);
+      font-family: var(--mono); font-size:12px;
     }
-    .tab{
+
+    .btn{
+      background:#fff;
+      border:1px solid var(--line);
+      color:var(--text);
       padding:10px 12px;
-      border:1px solid var(--line);
-      border-radius: 999px;
+      border-radius:12px;
       cursor:pointer;
-      font-weight:650;
-      color: var(--muted);
-      background:#fff;
-    }
-    .tab.active{
-      border-color: rgba(109,40,217,.35);
-      color: var(--purple);
-      background: rgba(109,40,217,.07);
-    }
-
-    .kpis{
-      display:grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap:12px;
-      margin-top:12px;
-    }
-    @media (max-width: 640px){
-      .kpis{ grid-template-columns: 1fr; }
-    }
-    .kpi{
-      border:1px dashed rgba(109,40,217,.25);
-      border-radius: 14px;
-      padding:12px;
-      background: rgba(109,40,217,.04);
-    }
-    .kpi .label{ color: var(--muted); font-size:12px; }
-    .kpi .value{ font-size:18px; font-weight:800; margin-top:6px; }
-
-    table{ width:100%; border-collapse: collapse; }
-    th, td{
-      border-bottom:1px solid var(--line);
-      padding:10px 8px;
-      text-align:left;
-      font-size:13px;
-      vertical-align: top;
-    }
-    th{ color: var(--muted); font-weight:800; font-size:12px; letter-spacing:.3px; }
-    tr:hover td{ background: rgba(156,163,175,.08); }
-    .rowActions{ display:flex; gap:8px; }
-    .tag{
+      font-weight:800;
+      transition:.15s ease;
       display:inline-flex;
-      padding:6px 10px;
-      border-radius: 999px;
-      font-size:12px;
-      font-weight:750;
-      border:1px solid var(--line);
-      color: var(--muted);
-      background:#fff;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+      white-space:nowrap;
     }
-    .tag.purple{
-      border-color: rgba(109,40,217,.35);
-      color: var(--purple);
-      background: rgba(109,40,217,.07);
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(37,99,235,.35); }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+    .btn.primary{
+      background: linear-gradient(90deg, rgba(37,99,235,.12), rgba(124,58,237,.10));
+      border-color: rgba(37,99,235,.25);
     }
+    .btn.danger{ background: rgba(220,38,38,.10); border-color: rgba(220,38,38,.25); }
+    .btn.ghost{ background:transparent; }
+    .btn.active{ outline:2px solid rgba(37,99,235,.20); }
 
-    .formGrid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:12px;
-      margin-top:12px;
-    }
-    @media (max-width: 640px){
-      .formGrid{ grid-template-columns: 1fr; }
-    }
-    label{ display:block; font-size:12px; color: var(--muted); font-weight:800; margin-bottom:6px; }
     input, select, textarea{
       width:100%;
       padding:10px 12px;
+      border-radius:12px;
       border:1px solid var(--line);
-      border-radius: 12px;
-      outline:none;
-      font-size:14px;
-      background:#fff;
-      color: var(--text);
-    }
-    textarea{ min-height: 90px; resize: vertical; }
-
-    .footerActions{
-      display:flex; gap:10px; justify-content:flex-end; margin-top:12px;
-    }
-
-    /* Modal */
-    .modalMask{
-      position:fixed; inset:0;
-      background: rgba(15,15,20,.45);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:16px;
-      z-index: 50;
-    }
-    .modal{
-      width: min(680px, 100%);
-      border-radius: 18px;
-      background:#fff;
-      border:1px solid var(--line);
-      box-shadow: 0 18px 60px rgba(0,0,0,.25);
-      padding:16px;
-    }
-    .modalHead{
-      display:flex; justify-content:space-between; align-items:center;
-      gap:10px;
-    }
-    .modalHead h3{ margin:0; font-size:16px; }
-    .x{ border:none; background:transparent; cursor:pointer; font-size:22px; line-height:1; color: var(--muted); }
-
-    /* Login */
-    .center{
-      min-height: 100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding: 22px;
-    }
-    .loginCard{
-      width:min(460px, 100%);
-      border:1px solid var(--line);
-      border-radius: 18px;
-      background:#fff;
-      box-shadow: var(--shadow);
-      padding:18px;
-    }
-    .loginTitle{ font-size:18px; font-weight:900; margin:0 0 6px; }
-    .loginSub{ margin:0; color: var(--muted); font-size:13px; line-height:1.4; }
-    .loginActions{ display:flex; gap:10px; margin-top:12px; justify-content:flex-end; }
-
-    /* Loader overlay + Mascot (Kuromi-style, generic, non-copyrighted) */
-    .loaderMask{
-      position: fixed; inset: 0;
-      display:none;
-      align-items: center; justify-content:center;
-      background: rgba(255,255,255,.75);
-      backdrop-filter: blur(6px);
-      z-index: 100;
-    }
-    .loaderCard{
-      width: 320px;
-      border:1px solid var(--line);
-      background:#fff;
-      border-radius: 18px;
-      padding: 14px;
-      box-shadow: var(--shadow);
-      text-align:center;
-    }
-    .loaderText{ font-weight:800; margin-top: 10px; }
-    .loaderSub{ font-size:12px; color: var(--muted); margin-top: 4px; }
-
-    /* Cute mischievous mascot */
-    .mascot{
-      width: 120px; height: 120px;
-      margin: 0 auto;
-      position: relative;
-      animation: floaty 1.5s ease-in-out infinite;
-    }
-    @keyframes floaty {
-      0%,100%{ transform: translateY(0); }
-      50%{ transform: translateY(-7px); }
-    }
-    .head{
-      position:absolute; inset: 20px 18px 18px 18px;
-      border-radius: 24px;
-      background: #111827;
-      box-shadow: 0 14px 30px rgba(17,24,39,.18);
-    }
-    .ear{
-      position:absolute; top: 0;
-      width: 28px; height: 48px;
-      background:#111827;
-      border-radius: 20px 20px 12px 12px;
-      transform-origin: bottom center;
-    }
-    .ear.left{ left: 18px; transform: rotate(-12deg); animation: earWiggle 1.2s ease-in-out infinite; }
-    .ear.right{ right: 18px; transform: rotate(12deg); animation: earWiggle 1.2s ease-in-out infinite reverse; }
-    @keyframes earWiggle{
-      0%,100%{ transform: rotate(var(--rot)); }
-      50%{ transform: rotate(calc(var(--rot) * -1)); }
-    }
-    .ear.left{ --rot:-12deg; }
-    .ear.right{ --rot:12deg; }
-
-    .face{
-      position:absolute; left: 24px; right: 24px; top: 40px; bottom: 24px;
-      border-radius: 18px;
       background: #fff;
+      color: var(--text);
+      outline:none;
     }
-    .eye{
-      position:absolute; top: 22px;
-      width: 12px; height: 12px; border-radius: 50%;
-      background:#111827;
+    textarea{ min-height: 86px; resize: vertical; }
+    label{ display:block; margin:10px 0 6px; color:var(--muted); font-size:12px; font-weight:700; }
+    .form-actions{ margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; }
+
+    .nav{
+      display:flex; gap:8px; flex-wrap:wrap;
+      padding:10px; border:1px solid var(--line); border-radius:14px;
+      background: rgba(2,6,23,.02);
     }
-    .eye.left{ left: 18px; }
-    .eye.right{ right: 18px; }
-    .mouth{
-      position:absolute; left: 50%; top: 46px;
-      width: 18px; height: 10px;
-      border: 3px solid #111827;
-      border-top: none;
-      border-left: none;
-      border-right: none;
-      transform: translateX(-50%);
-      border-radius: 0 0 20px 20px;
+    .nav .btn{ padding:10px 14px; }
+
+    .grid4{ display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; }
+    @media (max-width: 1000px){ .grid4{ grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px){ .grid4{ grid-template-columns: 1fr; } }
+
+    .kpi{
+      padding:14px; border-radius:14px; border:1px solid var(--line);
+      background: rgba(2,6,23,.02);
     }
-    .moodAngry .mouth{
-      border-radius: 20px 20px 0 0;
-      border-bottom: none;
-      border-top: 3px solid #111827;
-      top: 48px;
+    .kpi .label{ color:var(--muted); font-size:12px; font-weight:700; }
+    .kpi .value{ font-size:22px; font-weight:900; margin-top:4px; letter-spacing:.2px; }
+    .kpi .hint{ color:var(--muted); font-size:12px; margin-top:6px; line-height:1.4; }
+
+    table{ width:100%; border-collapse: collapse; }
+    th, td{ padding:10px 10px; border-bottom: 1px solid var(--line); text-align:left; font-size:13px; vertical-align:top; }
+    th{
+      color:var(--muted);
+      font-weight:900;
+      font-size:12px;
+      position:sticky;
+      top:0;
+      background: #fff;
+      z-index: 2;
     }
-    .blush{
-      position:absolute; top: 34px;
-      width: 14px; height: 8px; border-radius: 999px;
-      background: rgba(124,58,237,.25);
-      filter: blur(.1px);
+    .right{ text-align:right; }
+    .mono{ font-family: var(--mono); }
+    .click{ cursor:pointer; }
+
+    .tag{
+      display:inline-block; padding:4px 8px; border-radius:999px;
+      border:1px solid var(--line); font-size:12px; font-family:var(--mono);
+      background: rgba(2,6,23,.02);
     }
-    .blush.left{ left: 8px; }
-    .blush.right{ right: 8px; }
-    .horn{
-      position:absolute; top: 12px; left: 50%;
-      width: 14px; height: 14px;
-      border-radius: 4px;
-      background: var(--purple);
-      transform: translateX(-50%) rotate(15deg);
-      box-shadow: 0 0 0 4px rgba(109,40,217,.14);
-    }
+    .tag.ok{ background: rgba(5,150,105,.10); border-color: rgba(5,150,105,.25); }
+    .tag.warn{ background: rgba(217,119,6,.10); border-color: rgba(217,119,6,.25); }
+    .tag.danger{ background: rgba(220,38,38,.10); border-color: rgba(220,38,38,.25); }
+
+    .split{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    .hidden{ display:none !important; }
+    .hr{ height:1px; background: var(--line); margin: 12px 0; }
 
     .toast{
-      position: fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      padding: 10px 12px;
-      border-radius: 999px;
-      border:1px solid var(--line);
-      background:#fff;
-      box-shadow: var(--shadow);
+      position: fixed; right: 18px; bottom: 18px;
+      background: rgba(17,24,39,.92);
+      color:#fff;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      padding: 12px 14px;
+      min-width: 260px;
+      box-shadow:var(--shadow);
       display:none;
-      z-index: 200;
-      font-weight: 700;
-      font-size: 13px;
+      z-index: 40;
+      line-height:1.4;
     }
-    .toast.bad{ border-color:#fecaca; color:#b91c1c; }
-    .toast.good{ border-color:rgba(109,40,217,.35); color: var(--purple); }
+
+    .overlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(17,24,39,.20);
+      display:none;
+      z-index: 50;
+      align-items:center;
+      justify-content:center;
+      backdrop-filter: blur(4px);
+    }
+    .overlay.show{ display:flex; }
+    .spinner{
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 4px solid rgba(17,24,39,.18);
+      border-top-color: rgba(37,99,235,.85);
+      animation: spin 0.9s linear infinite;
+      background:#fff;
+    }
+    @keyframes spin{ to{ transform: rotate(360deg); } }
+
+    .hintbox{
+      border:1px dashed rgba(17,24,39,.18);
+      background: rgba(2,6,23,.02);
+      border-radius: 14px;
+      padding: 12px;
+      line-height: 1.5;
+    }
+
+    /* small modal for editing */
+    .modal{
+      width:min(680px, calc(100vw - 32px));
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+    .modal h3{ margin:0 0 10px; font-size:16px; }
   </style>
 </head>
 
 <body>
-  <!-- Loader -->
-  <div class="loaderMask" id="loaderMask">
-    <div class="loaderCard">
-      <div class="mascot" id="mascot">
-        <div class="ear left"></div>
-        <div class="ear right"></div>
-        <div class="head">
-          <div class="horn"></div>
-          <div class="face">
-            <div class="eye left"></div>
-            <div class="eye right"></div>
-            <div class="blush left"></div>
-            <div class="blush right"></div>
-            <div class="mouth"></div>
+  <div class="wrap">
+    <div class="split">
+      <div>
+        <h1 id="appTitle">Inventory & WIP</h1>
+        <div class="muted" id="appSubtitle">Sistem stok (Inbound/Usage), WIP, dan rekomendasi kebutuhan bulanan.</div>
+      </div>
+      <div class="pill" id="userPill">Not logged in</div>
+    </div>
+
+    <div style="height:14px"></div>
+
+    <!-- LOGIN -->
+    <div id="loginView" class="card">
+      <div class="row">
+        <div class="col">
+          <h2 style="margin:0 0 8px;">Login</h2>
+          <div class="muted" style="line-height:1.6;">
+            Login pakai data sheet <b>Users</b> (kolom <span class="mono">UserId</span> dan <span class="mono">Password</span>).
+          </div>
+
+          <label>User ID</label>
+          <input id="loginUserId" placeholder="mis. admin / staff01" autocomplete="username" />
+
+          <label>Password</label>
+          <input id="loginPass" placeholder="••••••••" type="password" autocomplete="current-password" />
+
+          <div class="form-actions">
+            <button class="btn primary" id="btnLogin" onclick="login()">Login</button>
+            <button class="btn" onclick="register()">Daftar Akun</button>
+            <button class="btn ghost" onclick="toggleBootstrap()">Buat Admin Pertama (opsional)</button>
+          </div>
+
+          <div id="bootstrapBox" class="card hidden" style="margin-top:14px;">
+            <div class="muted" style="margin-bottom:8px; line-height:1.6;">
+              Setup awal. Setelah admin dibuat, sebaiknya hapus/batasi method <b>bootstrapAdmin</b> di Code.gs.
+            </div>
+            <label>User ID</label>
+            <input id="bootUserId" placeholder="admin" />
+            <label>Display Name</label>
+            <input id="bootName" placeholder="Admin" />
+            <label>Password</label>
+            <input id="bootPass" type="password" placeholder="password" />
+            <div class="form-actions">
+              <button class="btn primary" id="btnBootstrap" onclick="bootstrapAdmin()">Buat Admin</button>
+              <button class="btn" onclick="toggleBootstrap()">Tutup</button>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="hintbox">
+            <div style="font-weight:900; margin-bottom:6px;">Rumus stok otomatis</div>
+            <div class="muted">
+              <div class="mono">CurrentStock = OpeningStock + ΣInbound - ΣUsage</div>
+              <div style="margin-top:8px;">
+                <div class="mono">ROP = (AvgMonthlyUsage/30 × LeadTimeDays) + SafetyStock</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="card" style="height:100%;">
+            <h2 style="margin:0 0 8px;">Fitur Utama</h2>
+            <div class="muted" style="line-height:1.7;">
+              <ul style="margin:10px 0 0; padding-left:18px;">
+                <li>Master item + parameter Safety & ROP</li>
+                <li>Input Inbound (barang masuk)</li>
+                <li>Input Usage (pemakaian bulanan)</li>
+                <li>WIP: progress (%) + lama proses (hari)</li>
+                <li>Laman evaluasi: rekomendasi kebutuhan bulanan (heuristik)</li>
+              </ul>
+            </div>
+            <div style="height:12px"></div>
+            <div class="pill">Tips: ItemCode konsisten (mis. POW-HVOF, GAS-AR, WIRE-SS, SAND-SILICA)</div>
           </div>
         </div>
       </div>
-      <div class="loaderText" id="loaderText">Memuat…</div>
-      <div class="loaderSub" id="loaderSub">Mascot mode: imut dulu, marah belakangan.</div>
-      <!-- Slot bila kamu ingin pakai GIF Kuromi milikmu sendiri:
-           <img src="PASTE_URL_GIF_KUROMI_MILIKMU" style="width:120px;height:120px;border-radius:16px;" />
-      -->
     </div>
-  </div>
+
+    <!-- MAIN -->
+    <div id="mainView" class="hidden">
+
+      <!-- PAGE NAV -->
+      <div class="card">
+        <div class="split">
+          <div class="nav">
+            <button class="btn active" id="pageBtnOps" onclick="showPage('ops')">Laman 1 • Operasional</button>
+            <button class="btn" id="pageBtnEval" onclick="showPage('eval')">Laman 2 • Evaluasi</button>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button class="btn" id="btnRefresh" onclick="refreshAll()">Refresh</button>
+            <button class="btn danger" onclick="logout()">Logout</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:14px"></div>
+
+      <!-- PAGE 1: OPS -->
+      <div id="pageOps">
+        <div class="card">
+          <div class="split">
+            <div class="nav">
+              <button class="btn active" id="tabBtnDashboard" onclick="showTab('dashboard')">Dashboard</button>
+              <button class="btn" id="tabBtnItems" onclick="showTab('items')">Master Items</button>
+              <button class="btn" id="tabBtnInbound" onclick="showTab('inbound')">Inbound</button>
+              <button class="btn" id="tabBtnUsage" onclick="showTab('usage')">Usage</button>
+              <button class="btn" id="tabBtnWip" onclick="showTab('wip')">Work In Progress</button>
+            </div>
+
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <input id="monthPick" type="month" style="max-width:170px;" onchange="refreshDashboard()" />
+              <div class="pill"><span id="pillMonth"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:14px"></div>
+
+        <!-- DASHBOARD TAB -->
+        <div id="tabDashboard">
+          <div class="grid4">
+            <div class="kpi">
+              <div class="label">Total Items</div>
+              <div class="value" id="kpiTotalItems">0</div>
+              <div class="hint">Jumlah item aktif di master.</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Reorder Needed</div>
+              <div class="value" id="kpiReorder">0</div>
+              <div class="hint">Stok ≤ ROP.</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Below Safety / Empty</div>
+              <div class="value" id="kpiBelowSafety">0</div>
+              <div class="hint">Stok ≤ Safety atau habis.</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Total Stock Value</div>
+              <div class="value" id="kpiValue">0</div>
+              <div class="hint">Estimasi nilai stok.</div>
+            </div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="row">
+            <div class="col card">
+              <div class="split">
+                <div>
+                  <h2>Top Usage (bulan dipilih)</h2>
+                  <div class="muted">Bar chart berdasarkan total pemakaian bulan tersebut.</div>
+                </div>
+              </div>
+              <div style="height:12px"></div>
+              <canvas id="chartTopUsage" height="120"></canvas>
+              <div class="muted" id="topUsageEmpty" style="margin-top:10px; display:none;">Belum ada data pemakaian pada bulan ini.</div>
+            </div>
+
+            <div class="col card">
+              <div class="split">
+                <div>
+                  <h2>Stock Value by Category</h2>
+                  <div class="muted">Pie chart estimasi nilai stok per kategori.</div>
+                </div>
+              </div>
+              <div style="height:12px"></div>
+              <canvas id="chartByCategory" height="120"></canvas>
+              <div class="muted" id="pieEmpty" style="margin-top:10px; display:none;">Belum ada data nilai stok.</div>
+            </div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="card">
+            <div class="split">
+              <div>
+                <h2>Tabel Stok + Status</h2>
+                <div class="muted">Klik header untuk sorting.</div>
+              </div>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <select id="filterStatus" style="max-width:190px;" onchange="renderItemsTable()">
+                  <option value="">Semua Status</option>
+                  <option value="Aman">Aman</option>
+                  <option value="Reorder">Reorder</option>
+                  <option value="Di bawah Safety">Di bawah Safety</option>
+                  <option value="Habis">Habis</option>
+                </select>
+                <input id="searchItems" placeholder="Cari ItemCode / ItemName..." style="max-width:320px;" oninput="renderItemsTable()" />
+              </div>
+            </div>
+
+            <div style="height:10px"></div>
+            <div style="overflow:auto; max-height: 520px; border-radius: 14px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="click" onclick="setSort('ItemCode')">Item</th>
+                    <th class="click" onclick="setSort('Category')">Category</th>
+                    <th class="click right" onclick="setSort('CurrentStock')">Stock</th>
+                    <th>Unit</th>
+                    <th class="click right" onclick="setSort('SafetyStock')">Safety</th>
+                    <th class="click right" onclick="setSort('ROP')">ROP</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="itemsTbody"></tbody>
+              </table>
+            </div>
+            <div class="muted" id="itemsEmpty" style="margin-top:10px; display:none;">Belum ada item. Tambahkan di tab <b>Master Items</b>.</div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="card">
+            <h2 style="margin:0 0 8px;">Recent Movements</h2>
+            <div class="muted">Inbound & Usage terbaru.</div>
+            <div style="height:10px"></div>
+            <div style="overflow:auto; max-height: 360px; border-radius: 14px;">
+              <table>
+                <thead>
+                  <tr><th>Tipe</th><th>Tanggal</th><th>ItemCode</th><th class="right">Qty</th><th>By</th><th>Notes</th></tr>
+                </thead>
+                <tbody id="movTbody"></tbody>
+              </table>
+            </div>
+            <div class="muted" id="movEmpty" style="margin-top:10px; display:none;">Belum ada transaksi.</div>
+          </div>
+        </div>
+
+        <!-- ITEMS TAB -->
+        <div id="tabItems" class="hidden">
+          <div class="row">
+            <div class="col card">
+              <div class="split">
+                <div>
+                  <h2 id="itemFormTitle">Tambah Item</h2>
+                  <div class="muted">Master item bisa di-edit langsung dari webapp.</div>
+                </div>
+                <div class="pill">Master Data</div>
+              </div>
+
+              <label>ItemCode <span class="muted">(unik)</span></label>
+              <input id="itCode" placeholder="POW-HVOF" />
+
+              <label>ItemName</label>
+              <input id="itName" placeholder="Powder HVOF A" />
+
+              <label>Category</label>
+              <input id="itCat" placeholder="Powder / Gas / Wire / Sand" />
+
+              <label>Unit</label>
+              <input id="itUnit" placeholder="kg / m³ / liter / pcs" />
+
+              <div class="row">
+                <div class="col">
+                  <label>OpeningStock</label>
+                  <input id="itOpen" type="number" step="0.001" placeholder="0" />
+                </div>
+                <div class="col">
+                  <label>UnitCost</label>
+                  <input id="itCost" type="number" step="0.01" placeholder="0" />
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col">
+                  <label>LeadTimeDays</label>
+                  <input id="itLT" type="number" step="1" placeholder="7" />
+                </div>
+                <div class="col">
+                  <label>AvgMonthlyUsage</label>
+                  <input id="itAvg" type="number" step="0.001" placeholder="10" />
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col">
+                  <label>SafetyStock</label>
+                  <input id="itSafety" type="number" step="0.001" placeholder="2" />
+                </div>
+                <div class="col">
+                  <label>MinStock (opsional)</label>
+                  <input id="itMin" type="number" step="0.001" placeholder="0" />
+                </div>
+                <div class="col">
+                  <label>MaxStock (opsional)</label>
+                  <input id="itMax" type="number" step="0.001" placeholder="0" />
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button class="btn primary" id="btnSaveItem" onclick="saveItem()">Simpan Item</button>
+                <button class="btn" id="btnCancelItemEdit" onclick="cancelItemEdit()" style="display:none;">Batal Edit</button>
+                <button class="btn" onclick="loadItems(true)">Reload Items</button>
+              </div>
+
+              <div class="hr"></div>
+              <div class="muted" style="line-height:1.6;">
+                Status stok otomatis:
+                <ul style="margin:8px 0 0; padding-left:18px;">
+                  <li><b>Aman</b>: stok &gt; ROP</li>
+                  <li><b>Reorder</b>: stok ≤ ROP</li>
+                  <li><b>Di bawah Safety</b>: stok ≤ SafetyStock</li>
+                  <li><b>Habis</b>: stok ≤ 0</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="col card">
+              <div class="split">
+                <div>
+                  <h2>Daftar Master Items</h2>
+                  <div class="muted">Klik <b>Edit</b> untuk mengubah data.</div>
+                </div>
+                <input id="searchMaster" placeholder="Cari master..." style="max-width:240px;" oninput="renderMasterItems()" />
+              </div>
+
+              <div style="height:10px"></div>
+              <div style="overflow:auto; max-height: 680px; border-radius: 14px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ItemCode</th><th>ItemName</th><th>Category</th><th>Unit</th>
+                      <th class="right">LeadTime</th><th class="right">Avg/Mo</th><th class="right">Safety</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="itemsMasterTbody"></tbody>
+                </table>
+              </div>
+
+              <div class="muted" id="masterEmpty" style="margin-top:10px; display:none;">Belum ada item.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INBOUND TAB -->
+        <div id="tabInbound" class="hidden">
+          <div class="row">
+            <div class="col card">
+              <div class="split">
+                <div>
+                  <h2 id="inFormTitle">Input Inbound</h2>
+                  <div class="muted">Inbound bisa di-edit dari webapp.</div>
+                </div>
+                <div class="pill">Inbound</div>
+              </div>
+
+              <label>Date</label>
+              <input id="inDate" type="date" />
+
+              <label>ItemCode</label>
+              <select id="inItem"></select>
+
+              <label>Qty <span class="muted">(wajib &gt; 0)</span></label>
+              <input id="inQty" type="number" step="0.001" placeholder="0" />
+
+              <label>UnitCost (opsional)</label>
+              <input id="inCost" type="number" step="0.01" placeholder="0" />
+
+              <label>Supplier (opsional)</label>
+              <input id="inSupplier" placeholder="Nama supplier" />
+
+              <label>Notes</label>
+              <textarea id="inNotes" placeholder="Catatan..."></textarea>
+
+              <div class="form-actions">
+                <button class="btn primary" id="btnSaveInbound" onclick="saveInbound()">Simpan Inbound</button>
+                <button class="btn" id="btnCancelInboundEdit" onclick="cancelInboundEdit()" style="display:none;">Batal Edit</button>
+              </div>
+            </div>
+
+            <div class="col card">
+              <div class="split">
+                <div>
+                  <h2>Riwayat Inbound</h2>
+                  <div class="muted">200 data terakhir. Klik <b>Edit</b> untuk ubah.</div>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                  <input id="searchInbound" placeholder="Cari ItemCode/Supplier..." style="max-width:260px;" oninput="renderInboundTable()" />
+                  <button class="btn" onclick="loadInbound()">Reload</button>
+                </div>
+              </div>
+
+              <div style="height:10px"></div>
+              <div style="overflow:auto; max-height: 680px; border-radius: 14px;">
+                <table>
+                  <thead>
+                    <tr><th>Tanggal</th><th>ItemCode</th><th class="right">Qty</th><th class="right">UnitCost</th><th>Supplier</th><th>Aksi</th></tr>
+                  </thead>
+                  <tbody id="inboundTbody"></tbody>
+                </table>
+              </div>
+              <div class="muted" id="inboundEmpty" style="margin-top:10px; display:none;">Belum ada inbound.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- USAGE TAB -->
+        <div id="tabUsage" class="hidden">
+          <div class="row">
+            <div class="col card">
+              <div class="split">
+                <div>
+                  <h2 id="usFormTitle">Input Usage</h2>
+                  <div class="muted">Usage bisa di-edit dari webapp.</div>
+                </div>
+                <div class="pill">Usage</div>
+              </div>
+
+              <label>Date</label>
+              <input id="usDate" type="date" />
+
+              <label>ItemCode</label>
+              <select id="usItem"></select>
+
+              <label>Qty <span class="muted">(wajib &gt; 0)</span></label>
+              <input id="usQty" type="number" step="0.001" placeholder="0" />
+
+              <label>Notes</label>
+              <textarea id="usNotes" placeholder="Mis. pemakaian HVOF batch Feb minggu-2"></textarea>
+
+              <div class="form-actions">
+                <button class="btn primary" id="btnSaveUsage" onclick="saveUsage()">Simpan Usage</button>
+                <button class="btn" id="btnCancelUsageEdit" onclick="cancelUsageEdit()" style="display:none;">Batal Edit</button>
+              </div>
+            </div>
+
+            <div class="col card">
+              <div class="split">
+                <div>
+                  <h2>Riwayat Usage</h2>
+                  <div class="muted">200 data terakhir. Klik <b>Edit</b> untuk ubah.</div>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                  <input id="searchUsage" placeholder="Cari ItemCode/Notes..." style="max-width:260px;" oninput="renderUsageTable()" />
+                  <button class="btn" onclick="loadUsage()">Reload</button>
+                </div>
+              </div>
+
+              <div style="height:10px"></div>
+              <div style="overflow:auto; max-height: 680px; border-radius: 14px;">
+                <table>
+                  <thead>
+                    <tr><th>Tanggal</th><th>ItemCode</th><th class="right">Qty</th><th>Notes</th><th>Aksi</th></tr>
+                  </thead>
+                  <tbody id="usageTbody"></tbody>
+                </table>
+              </div>
+              <div class="muted" id="usageEmpty" style="margin-top:10px; display:none;">Belum ada usage.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- WIP TAB -->
+        <div id="tabWip" class="hidden">
+          <div class="row">
+            <div class="col card">
+              <div class="split">
+                <div>
+                  <h2 id="wipFormTitle">Tambah Work In Progress</h2>
+                  <div class="muted">Input progress (%) dan tahap pekerjaan komponen.</div>
+                </div>
+                <div class="pill">WIP</div>
+              </div>
+
+              <label>InDate</label>
+              <input id="wipInDate" type="date" />
+
+              <label>ComponentCode (opsional)</label>
+              <input id="wipCompCode" placeholder="COMP-001" />
+
+              <label>ComponentName</label>
+              <input id="wipCompName" placeholder="Nozzle / Shaft / Housing / ..." />
+
+              <label>Stage</label>
+              <select id="wipStage"></select>
+
+              <div class="row">
+                <div class="col">
+                  <label>Percent (%)</label>
+                  <input id="wipPercent" type="number" step="0.01" placeholder="0" />
+                </div>
+                <div class="col">
+                  <label>Status</label>
+                  <select id="wipStatus">
+                    <option>In Progress</option>
+                    <option>On Hold</option>
+                    <option>Done</option>
+                  </select>
+                </div>
+              </div>
+
+              <label>OutDate (isi jika selesai)</label>
+              <input id="wipOutDate" type="date" />
+
+              <label>Notes</label>
+              <textarea id="wipNotes" placeholder="Catatan proses..."></textarea>
+
+              <div class="form-actions">
+                <button class="btn primary" id="btnSaveWip" onclick="saveWip()">Simpan WIP</button>
+                <button class="btn" id="btnCancelWipEdit" onclick="cancelWipEdit()" style="display:none;">Batal Edit</button>
+              </div>
+
+              <div class="hr"></div>
+              <div class="hintbox">
+                <div style="font-weight:900; margin-bottom:6px;">Yang dihitung otomatis</div>
+                <div class="muted">Lama proses (hari) = selisih dari <span class="mono">InDate</span> ke <span class="mono">OutDate</span> (jika ada), atau ke hari ini (jika belum selesai).</div>
+              </div>
+            </div>
+
+            <div class="col card">
+              <div class="split">
+                <div>
+                  <h2>WIP Analytics</h2>
+                  <div class="muted">Ringkasan status & tahap.</div>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                  <button class="btn" onclick="loadWip()">Reload</button>
+                </div>
+              </div>
+
+              <div style="height:10px"></div>
+
+              <div class="grid4">
+                <div class="kpi">
+                  <div class="label">Total WIP</div>
+                  <div class="value" id="kpiWipTotal">0</div>
+                  <div class="hint">Semua data WIP.</div>
+                </div>
+                <div class="kpi">
+                  <div class="label">Active WIP</div>
+                  <div class="value" id="kpiWipActive">0</div>
+                  <div class="hint">Belum selesai.</div>
+                </div>
+                <div class="kpi">
+                  <div class="label">Avg Days (Active)</div>
+                  <div class="value" id="kpiWipAvgDays">0</div>
+                  <div class="hint">Rata-rata hari proses WIP aktif.</div>
+                </div>
+                <div class="kpi">
+                  <div class="label">Done</div>
+                  <div class="value" id="kpiWipDone">0</div>
+                  <div class="hint">Status Done.</div>
+                </div>
+              </div>
+
+              <div style="height:12px"></div>
+
+              <div class="row">
+                <div class="col card">
+                  <h2>WIP by Stage</h2>
+                  <div class="muted">Bar chart jumlah WIP per tahap.</div>
+                  <div style="height:10px"></div>
+                  <canvas id="chartWipStage" height="120"></canvas>
+                </div>
+                <div class="col card">
+                  <h2>WIP by Status</h2>
+                  <div class="muted">Pie chart status WIP.</div>
+                  <div style="height:10px"></div>
+                  <canvas id="chartWipStatus" height="120"></canvas>
+                </div>
+              </div>
+
+              <div style="height:12px"></div>
+
+              <div class="card">
+                <div class="split">
+                  <div>
+                    <h2>Daftar WIP</h2>
+                    <div class="muted">Klik <b>Edit</b> untuk update progress/tahap.</div>
+                  </div>
+                  <input id="searchWip" placeholder="Cari komponen/stage..." style="max-width:260px;" oninput="renderWipTable()" />
+                </div>
+
+                <div style="height:10px"></div>
+                <div style="overflow:auto; max-height: 420px; border-radius: 14px;">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>InDate</th>
+                        <th>Component</th>
+                        <th>Stage</th>
+                        <th class="right">%</th>
+                        <th>Status</th>
+                        <th class="right">Days</th>
+                        <th>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody id="wipTbody"></tbody>
+                  </table>
+                </div>
+                <div class="muted" id="wipEmpty" style="margin-top:10px; display:none;">Belum ada data WIP.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /pageOps -->
+
+      <!-- PAGE 2: EVALUATION -->
+      <div id="pageEval" class="hidden">
+        <div class="card">
+          <div class="split">
+            <div>
+              <h2>Evaluasi & Rekomendasi Kebutuhan Bulanan</h2>
+              <div class="muted">Rekomendasi dibuat dari tren pemakaian beberapa bulan terakhir + Safety + Lead Time. (Heuristik, bukan “AI model”.)</div>
+            </div>
+            <div class="pill">Laman 2</div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="row">
+            <div class="col">
+              <label>Lookback (bulan)</label>
+              <select id="evalLookback" style="max-width:200px;">
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                <option value="9">9</option><option value="12">12</option>
+              </select>
+            </div>
+
+            <div class="col">
+              <label>Target Month (opsional)</label>
+              <input id="evalMonth" type="month" style="max-width:200px;" />
+            </div>
+
+            <div class="col" style="display:flex; align-items:flex-end;">
+              <button class="btn primary" onclick="runEvaluation()">Generate Rekomendasi</button>
+            </div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="grid4">
+            <div class="kpi">
+              <div class="label">Items</div>
+              <div class="value" id="kpiEvalItems">0</div>
+              <div class="hint">Item aktif yang dievaluasi.</div>
+            </div>
+            <div class="kpi">
+              <div class="label">High Priority</div>
+              <div class="value" id="kpiEvalHigh">0</div>
+              <div class="hint">Stok ≤ ROP/Safety.</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Need Purchase</div>
+              <div class="value" id="kpiEvalNeed">0</div>
+              <div class="hint">SuggestedOrder &gt; 0.</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Total Suggested Qty</div>
+              <div class="value" id="kpiEvalQty">0</div>
+              <div class="hint">Total rekomendasi pembelian (unit campur).</div>
+            </div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="row">
+            <div class="col card">
+              <h2>Top Suggested Purchase</h2>
+              <div class="muted">Bar chart 10 item teratas berdasarkan SuggestedOrder.</div>
+              <div style="height:10px"></div>
+              <canvas id="chartEvalTopNeed" height="120"></canvas>
+              <div class="muted" id="evalTopNeedEmpty" style="margin-top:10px; display:none;">Tidak ada rekomendasi pembelian.</div>
+            </div>
+
+            <div class="col card">
+              <h2>AI-like Insight</h2>
+              <div class="muted" id="evalInsightWindow" style="margin-top:4px;">—</div>
+              <div style="height:10px"></div>
+              <div class="hintbox">
+                <ul id="evalInsightList" style="margin:0; padding-left:18px; line-height:1.7;"></ul>
+              </div>
+            </div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="card">
+            <div class="split">
+              <div>
+                <h2>Tabel Rekomendasi</h2>
+                <div class="muted">Urutan berdasarkan prioritas lalu SuggestedOrder.</div>
+              </div>
+              <input id="searchEval" placeholder="Cari ItemCode/ItemName..." style="max-width:280px;" oninput="renderEvalTable()" />
+            </div>
+
+            <div style="height:10px"></div>
+            <div style="overflow:auto; max-height: 520px; border-radius: 14px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th class="right">Stock</th>
+                    <th class="right">ROP</th>
+                    <th class="right">Forecast</th>
+                    <th class="right">Suggested</th>
+                    <th>Priority</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="evalTbody"></tbody>
+              </table>
+            </div>
+            <div class="muted" id="evalEmpty" style="margin-top:10px; display:none;">Belum ada data rekomendasi.</div>
+          </div>
+        </div>
+      </div><!-- /pageEval -->
+
+    </div><!-- /mainView -->
+  </div><!-- /wrap -->
 
   <div class="toast" id="toast"></div>
 
-  <!-- LOGIN VIEW -->
-  <div class="center" id="loginView" style="display:none;">
-    <div class="loginCard">
-      <div class="brand" style="margin-bottom:10px;">
-        <div class="logoDot"></div>
-        <div>
-          <div class="brandTitle">Tabungan Kita Berdua</div>
-          <div class="muted">Nabung • Pemakaian • Goals Kita</div>
-        </div>
-      </div>
-      <h1 class="loginTitle">Login</h1>
-      <p class="loginSub">Masuk dengan <b>ID</b> dan <b>Password</b></p>
-
-      <div class="formGrid" style="margin-top:14px;">
-        <div>
-          <label>User ID</label>
-          <input id="loginUserId" placeholder="contoh: admin" />
-        </div>
-        <div>
-          <label>Password</label>
-          <input id="loginPassword" type="password" placeholder="contoh: admin123" />
-        </div>
-      </div>
-      <div class="loginActions">
-        <button class="btn primary" onclick="handleLogin()">Login</button>
-      </div>
-      <div class="muted" style="margin-top:10px;">
-        Tidak ada Registrasi akun: <span class="tag purple">Khusus kita berdua</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- APP VIEW -->
-  <div class="wrap" id="appView" style="display:none;">
-    <div class="topbar">
-      <div class="brand">
-        <div class="logoDot"></div>
-        <div>
-          <div class="brandTitle">Tabungan Kita Berdua</div>
-          <div class="muted" id="welcomeText">—</div>
-        </div>
-      </div>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <div class="pill">
-          <span>Session</span>
-          <span class="tag purple" id="sessionUser">—</span>
-        </div>
-        <button class="btn" onclick="refreshAll()">Sync</button>
-        <button class="btn danger" onclick="logout()">Logout</button>
-      </div>
-    </div>
-
-    <div class="tabs">
-      <div class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</div>
-      <div class="tab" data-tab="inflow" onclick="switchTab('inflow')">Cash Inflow</div>
-      <div class="tab" data-tab="outbound" onclick="switchTab('outbound')">Cash Outbound</div>
-      <div class="tab" data-tab="goals" onclick="switchTab('goals')">Forecasting Goals</div>
-    </div>
-
-    <div class="grid">
-      <div class="card" id="mainCard">
-        <!-- Dynamic content -->
-      </div>
-
-      <div class="card">
-        <h2>Quick Add</h2>
-        <div class="muted">Tambah transaksi cepat (akan masuk sesuai tab aktif).</div>
-
-        <div class="formGrid">
-          <div>
-            <label>Tanggal</label>
-            <input id="qaDate" type="date" />
-          </div>
-          <div>
-            <label>Amount</label>
-            <input id="qaAmount" type="number" min="0" step="1" placeholder="contoh: 25000" />
-          </div>
-          <div>
-            <label>Kategori</label>
-            <input id="qaCategory" placeholder="contoh: Gaji / Makan / Transport" />
-          </div>
-          <div>
-            <label>Catatan</label>
-            <input id="qaNote" placeholder="opsional" />
-          </div>
-        </div>
-
-        <div class="footerActions">
-          <button class="btn primary" onclick="quickAdd()">Tambah</button>
-        </div>
-
-        <div style="margin-top:14px;">
-          <h2 style="margin-bottom:6px;">Mascot Mood</h2>
-          <div class="muted">Loader imut atau marah</div>
-          <div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn" onclick="setMascotMood('cute')">Imut</button>
-            <button class="btn" onclick="setMascotMood('angry')">Marah</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal -->
-  <div class="modalMask" id="modalMask">
+  <div class="overlay" id="overlay" aria-hidden="true">
     <div class="modal">
-      <div class="modalHead">
-        <h3 id="modalTitle">—</h3>
-        <button class="x" onclick="closeModal()">×</button>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="spinner"></div>
+        <div>
+          <div style="font-weight:900;">Memproses…</div>
+          <div class="muted" id="overlayText">—</div>
+        </div>
       </div>
-      <div id="modalBody"></div>
     </div>
   </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config.js"></script>
+<script>
+  // ====== State ======
+  let token = localStorage.getItem('inv_token') || '';
+  let me = null;
+  let config = null;
 
-  <!-- Config: isi SUPABASE_URL dan SUPABASE_ANON_KEY di config.js -->
-  <script src="./config.js"></script>
-  <!-- Supabase JS (UMD) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  let itemsCache = [];
+  let dashCache = null;
+  let inboundCache = [];
+  let usageCache = [];
+  let wipCache = [];
+  let wipStages = [];
 
-  <script>
-  // =========================
-  // Config + Supabase client
-  // =========================
-  const APP = window.APP_CONFIG || {};
-  const SUPABASE_URL = APP.SUPABASE_URL || '';
-  const SUPABASE_ANON_KEY = APP.SUPABASE_ANON_KEY || '';
-  const ID_EMAIL_SUFFIX = APP.ID_EMAIL_SUFFIX || '@tabungan.local';
-  const AVG_MONTHS_FOR_FORECAST = Number(APP.AVG_MONTHS_FOR_FORECAST || 3);
+  let evalCache = [];
 
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error('Supabase config missing. Pastikan config.js terisi (SUPABASE_URL & SUPABASE_ANON_KEY).');
+  // edit modes
+  let editingItemCode = '';
+  let editingInboundTx = '';
+  let editingUsageTx = '';
+  let editingWipId = '';
+
+  // charts
+  let chartTop = null;
+  let chartPie = null;
+  let chartWipStage = null;
+  let chartWipStatus = null;
+  let chartEval = null;
+
+  let sortKey = 'ItemCode';
+  let sortDir = 'asc';
+
+  // ====== UI Helpers ======
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = String(msg || '');
+    t.style.display = 'block';
+    setTimeout(()=> t.style.display='none', 2600);
   }
 
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  function setOverlay(show, text){
+    const ov = document.getElementById('overlay');
+    const tx = document.getElementById('overlayText');
+    tx.textContent = text || 'Memproses...';
+    ov.classList.toggle('show', !!show);
+    ov.setAttribute('aria-hidden', show ? 'false' : 'true');
+  }
 
-  // =========================
-  // State
-  // =========================
-  const state = {
-    session: null,
-    userId: null,     // local part dari email
-    fullName: null,   // dari profiles.full_name
-    activeTab: 'dashboard',
-    inflow: [],
-    outbound: [],
-    goals: [],
-    summary: { totalIn:0, totalOut:0, balance:0, avgMonthlyNet:0 },
-    mascotMood: 'cute'
-  };
+    // ====== Supabase Client ======
+  const APP_CFG = window.APP_CONFIG || {};
+  const SUPABASE_URL = APP_CFG.SUPABASE_URL || '';
+  const SUPABASE_ANON_KEY = APP_CFG.SUPABASE_ANON_KEY || '';
+  const EMAIL_DOMAIN = APP_CFG.EMAIL_DOMAIN || 'inv.local';
 
-  // =========================
-  // Helpers: UI
-  // =========================
-  function money(n){
+  let sb = null;
+  function ensureSupabase(){
+    if(sb) return sb;
+    if(!SUPABASE_URL || !SUPABASE_ANON_KEY){
+      throw new Error('Supabase config belum diisi. Buka config.js lalu isi SUPABASE_URL & SUPABASE_ANON_KEY.');
+    }
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }
+    });
+    return sb;
+  }
+  function userIdToEmail(userId){
+    return `${String(userId||'').trim()}@${EMAIL_DOMAIN}`;
+  }
+  function asNum(x){
+    const n = Number(x);
+    return isFinite(n) ? n : 0;
+  }
+
+  async function getMyProfile_(){
+    const s = ensureSupabase();
+    const { data: uData, error: uErr } = await s.auth.getUser();
+    if(uErr) throw uErr;
+    if(!uData || !uData.user) return null;
+
+    const uid = uData.user.id;
+    const { data, error } = await s
+      .from('profiles')
+      .select('user_id, display_name, role, is_active')
+      .eq('id', uid)
+      .maybeSingle();
+    if(error) throw error;
+
+    // jika trigger belum sempat membuat profile, fallback minimal
+    if(!data){
+      const fallbackUserId = (uData.user.email || '').split('@')[0] || 'user';
+      return { userId: fallbackUserId, displayName: fallbackUserId, role:'viewer', isActive:true };
+    }
+
+    return {
+      userId: data.user_id,
+      displayName: data.display_name || data.user_id,
+      role: data.role || 'viewer',
+      isActive: (data.is_active !== false)
+    };
+  }
+
+  function mapItem_(r){
+    return {
+      ItemCode: r.item_code,
+      ItemName: r.item_name,
+      Category: r.category || '',
+      Unit: r.unit || '',
+      OpeningStock: asNum(r.opening_stock),
+      UnitCost: asNum(r.unit_cost),
+      LeadTimeDays: asNum(r.lead_time_days),
+      AvgMonthlyUsage: asNum(r.avg_monthly_usage),
+      SafetyStock: asNum(r.safety_stock),
+      MinStock: asNum(r.min_stock),
+      MaxStock: asNum(r.max_stock),
+      IsActive: (r.is_active !== false),
+      CreatedAt: r.created_at || '',
+      InboundTotal: asNum(r.inbound_total),
+      UsageTotal: asNum(r.usage_total),
+      CurrentStock: asNum(r.current_stock),
+      ROP: asNum(r.rop),
+      StockValue: asNum(r.stock_value),
+      Status: r.status || ''
+    };
+  }
+
+  function mapInbound_(r){
+    return {
+      TxId: r.tx_id,
+      Date: r.tx_date,
+      ItemCode: r.item_code,
+      Qty: asNum(r.qty),
+      UnitCost: asNum(r.unit_cost),
+      Supplier: r.supplier || '',
+      Notes: r.notes || '',
+      CreatedBy: r.created_by_name || '',
+      CreatedAt: r.created_at || ''
+    };
+  }
+
+  function mapUsage_(r){
+    return {
+      TxId: r.tx_id,
+      Date: r.tx_date,
+      ItemCode: r.item_code,
+      Qty: asNum(r.qty),
+      Notes: r.notes || '',
+      CreatedBy: r.created_by_name || '',
+      CreatedAt: r.created_at || ''
+    };
+  }
+
+  function mapWip_(r){
+    return {
+      WIPId: r.wip_id,
+      InDate: r.in_date,
+      ComponentCode: r.component_code || '',
+      ComponentName: r.component_name || '',
+      Stage: r.stage || '',
+      Percent: asNum(r.percent),
+      Status: r.status || '',
+      OutDate: r.out_date || '',
+      Notes: r.notes || '',
+      CreatedBy: r.created_by_name || '',
+      CreatedAt: r.created_at || '',
+      UpdatedAt: r.updated_at || '',
+      DaysInProcess: asNum(r.days_in_process)
+    };
+  }
+
+  async function apiCall(method, payload){
+    const s = ensureSupabase();
+    method = String(method || '').trim();
+    payload = payload || {};
+
     try{
-      return new Intl.NumberFormat('id-ID', { style:'currency', currency:'IDR', maximumFractionDigits:0 }).format(Number(n||0));
-    } catch(e){
-      return 'Rp ' + (Number(n||0).toFixed(0));
+      // ===== Auth (public-ish) =====
+      if(method === 'login'){
+        const userId = String(payload.userId || '').trim();
+        const password = String(payload.password || '').trim();
+        if(!userId || !password) return { ok:false, message:'UserId dan password wajib.' };
+
+        const email = userIdToEmail(userId);
+        const { data, error } = await s.auth.signInWithPassword({ email, password });
+        if(error) return { ok:false, message: error.message || 'Login gagal' };
+
+        const session = data.session;
+        token = session?.access_token || '';
+        if(token) localStorage.setItem('inv_token', token);
+
+        const prof = await getMyProfile_();
+        return { ok:true, token, user: prof };
+      }
+
+      if(method === 'bootstrapAdmin'){
+        const userId = String(payload.userId || '').trim();
+        const displayName = String(payload.displayName || 'Admin').trim();
+        const password = String(payload.password || '').trim();
+
+        if(!userId || !password) return { ok:false, message:'UserId dan password wajib.' };
+
+        const email = userIdToEmail(userId);
+        const { data, error } = await s.auth.signUp({
+          email,
+          password,
+          options: { data: { user_id: userId, display_name: displayName } }
+        });
+
+        if(error) return { ok:false, message: error.message || 'Gagal membuat admin' };
+
+        // Jika email confirmation dimatikan, user biasanya langsung punya session
+        if(data?.session?.access_token){
+          token = data.session.access_token;
+          localStorage.setItem('inv_token', token);
+        }
+
+        return { ok:true, message:'Akun dibuat. Silakan login.' };
+      }
+
+      // ===== Session / me =====
+      if(method === 'me'){
+        const { data: sData } = await s.auth.getSession();
+        if(!sData || !sData.session) return { ok:false, message:'Sesi tidak ditemukan. Silakan login.' };
+
+        token = sData.session.access_token || token || '';
+        if(token) localStorage.setItem('inv_token', token);
+
+        const prof = await getMyProfile_();
+        return { ok:true, user: prof };
+      }
+
+      if(method === 'logout'){
+        await s.auth.signOut();
+        token = '';
+        localStorage.removeItem('inv_token');
+        return { ok:true };
+      }
+
+      // ===== Config =====
+      if(method === 'config.get'){
+        const { data, error } = await s.from('app_config').select('key,value');
+        if(error) throw error;
+        const map = {};
+        (data||[]).forEach(r => map[r.key] = r.value);
+
+        const cfg = {
+          APP_NAME: map.APP_NAME || 'Inventory & WIP',
+          COMPANY_NAME: map.COMPANY_NAME || '',
+          DEFAULT_MONTH_WINDOW: Number(map.DEFAULT_MONTH_WINDOW || 3),
+          WIP_STAGES: map.WIP_STAGES || 'Received|Done',
+          EVAL_LOOKBACK_MONTHS: Number(map.EVAL_LOOKBACK_MONTHS || 3),
+        };
+        return { ok:true, config: cfg };
+      }
+
+      // ===== Items =====
+      if(method === 'items.list' || method === 'items.listAll'){
+        let q = s.from('v_items_calc').select('*').order('item_code', { ascending:true });
+        if(method === 'items.list') q = q.eq('is_active', true);
+        const { data, error } = await q;
+        if(error) throw error;
+        return { ok:true, items: (data||[]).map(mapItem_) };
+      }
+
+      if(method === 'items.add'){
+        const row = {
+          item_code: String(payload.ItemCode||'').trim(),
+          item_name: String(payload.ItemName||'').trim(),
+          category: String(payload.Category||'').trim(),
+          unit: String(payload.Unit||'').trim(),
+          opening_stock: asNum(payload.OpeningStock),
+          unit_cost: asNum(payload.UnitCost),
+          lead_time_days: asNum(payload.LeadTimeDays),
+          avg_monthly_usage: asNum(payload.AvgMonthlyUsage),
+          safety_stock: asNum(payload.SafetyStock),
+          min_stock: asNum(payload.MinStock),
+          max_stock: asNum(payload.MaxStock),
+          is_active: true
+        };
+        if(!row.item_code || !row.item_name) return { ok:false, message:'ItemCode dan ItemName wajib.' };
+
+        const { error } = await s.from('items').insert(row);
+        if(error) return { ok:false, message: error.message || 'Gagal simpan item' };
+        return { ok:true, message:'Item tersimpan.' };
+      }
+
+      if(method === 'items.update'){
+        const code = String(payload.ItemCode||'').trim();
+        if(!code) return { ok:false, message:'ItemCode wajib.' };
+
+        const patch = {
+          item_name: String(payload.ItemName ?? '').trim(),
+          category: String(payload.Category ?? '').trim(),
+          unit: String(payload.Unit ?? '').trim(),
+          opening_stock: (payload.OpeningStock === undefined ? undefined : asNum(payload.OpeningStock)),
+          unit_cost: (payload.UnitCost === undefined ? undefined : asNum(payload.UnitCost)),
+          lead_time_days: (payload.LeadTimeDays === undefined ? undefined : asNum(payload.LeadTimeDays)),
+          avg_monthly_usage: (payload.AvgMonthlyUsage === undefined ? undefined : asNum(payload.AvgMonthlyUsage)),
+          safety_stock: (payload.SafetyStock === undefined ? undefined : asNum(payload.SafetyStock)),
+          min_stock: (payload.MinStock === undefined ? undefined : asNum(payload.MinStock)),
+          max_stock: (payload.MaxStock === undefined ? undefined : asNum(payload.MaxStock)),
+        };
+        // buang undefined supaya patch tidak overwriting
+        Object.keys(patch).forEach(k => patch[k] === undefined && delete patch[k]);
+
+        const { error } = await s.from('items').update(patch).eq('item_code', code);
+        if(error) return { ok:false, message: error.message || 'Gagal update item' };
+        return { ok:true, message:'Item diperbarui.' };
+      }
+
+      if(method === 'items.toggleActive'){
+        const code = String(payload.ItemCode||'').trim();
+        if(!code) return { ok:false, message:'ItemCode wajib.' };
+        const { error } = await s.from('items').update({ is_active: !!payload.IsActive }).eq('item_code', code);
+        if(error) return { ok:false, message: error.message || 'Gagal update status' };
+        return { ok:true, message:'Status item diperbarui.' };
+      }
+
+      // ===== Inbound =====
+      if(method === 'inbound.list'){
+        const limit = Number(payload.limit || 200);
+        const { data, error } = await s
+          .from('v_inbound')
+          .select('*')
+          .order('tx_date', { ascending:false })
+          .order('created_at', { ascending:false })
+          .limit(limit);
+        if(error) throw error;
+        return { ok:true, inbound: (data||[]).map(mapInbound_) };
+      }
+
+      if(method === 'inbound.add'){
+        const row = {
+          tx_date: String(payload.Date||'').trim(),
+          item_code: String(payload.ItemCode||'').trim(),
+          qty: asNum(payload.Qty),
+          unit_cost: asNum(payload.UnitCost),
+          supplier: String(payload.Supplier||'').trim(),
+          notes: String(payload.Notes||'').trim()
+        };
+        if(!row.tx_date || !row.item_code || row.qty <= 0) return { ok:false, message:'Date, ItemCode, Qty wajib (Qty > 0).' };
+        const { error } = await s.from('inbound').insert(row);
+        if(error) return { ok:false, message: error.message || 'Gagal simpan inbound' };
+        return { ok:true, message:'Inbound tersimpan.' };
+      }
+
+      if(method === 'inbound.update'){
+        const id = String(payload.TxId||'').trim();
+        if(!id) return { ok:false, message:'TxId wajib.' };
+
+        const patch = {
+          tx_date: payload.Date,
+          item_code: payload.ItemCode,
+          qty: (payload.Qty === undefined ? undefined : asNum(payload.Qty)),
+          unit_cost: (payload.UnitCost === undefined ? undefined : asNum(payload.UnitCost)),
+          supplier: payload.Supplier,
+          notes: payload.Notes
+        };
+        Object.keys(patch).forEach(k => patch[k] === undefined && delete patch[k]);
+
+        const { error } = await s.from('inbound').update(patch).eq('tx_id', id);
+        if(error) return { ok:false, message: error.message || 'Gagal update inbound' };
+        return { ok:true, message:'Inbound diperbarui.' };
+      }
+
+      // ===== Usage =====
+      if(method === 'usage.list'){
+        const limit = Number(payload.limit || 200);
+        const { data, error } = await s
+          .from('v_usage')
+          .select('*')
+          .order('tx_date', { ascending:false })
+          .order('created_at', { ascending:false })
+          .limit(limit);
+        if(error) throw error;
+        return { ok:true, usage: (data||[]).map(mapUsage_) };
+      }
+
+      if(method === 'usage.add'){
+        const row = {
+          tx_date: String(payload.Date||'').trim(),
+          item_code: String(payload.ItemCode||'').trim(),
+          qty: asNum(payload.Qty),
+          notes: String(payload.Notes||'').trim()
+        };
+        if(!row.tx_date || !row.item_code || row.qty <= 0) return { ok:false, message:'Date, ItemCode, Qty wajib (Qty > 0).' };
+        const { error } = await s.from('usage').insert(row);
+        if(error) return { ok:false, message: error.message || 'Gagal simpan usage' };
+        return { ok:true, message:'Usage tersimpan.' };
+      }
+
+      if(method === 'usage.update'){
+        const id = String(payload.TxId||'').trim();
+        if(!id) return { ok:false, message:'TxId wajib.' };
+
+        const patch = {
+          tx_date: payload.Date,
+          item_code: payload.ItemCode,
+          qty: (payload.Qty === undefined ? undefined : asNum(payload.Qty)),
+          notes: payload.Notes
+        };
+        Object.keys(patch).forEach(k => patch[k] === undefined && delete patch[k]);
+
+        const { error } = await s.from('usage').update(patch).eq('tx_id', id);
+        if(error) return { ok:false, message: error.message || 'Gagal update usage' };
+        return { ok:true, message:'Usage diperbarui.' };
+      }
+
+      // ===== Dashboard =====
+      if(method === 'dashboard.get'){
+        const month = String(payload.month||'').trim(); // YYYY-MM
+        // items (aktif)
+        const itemsRes = await apiCall('items.list', {});
+        if(!itemsRes.ok) return itemsRes;
+        const items = itemsRes.items || [];
+
+        const summary = {
+          totalItems: items.length,
+          reorderCount: items.filter(i => i.Status === 'Reorder').length,
+          belowSafetyCount: items.filter(i => i.Status === 'Di bawah Safety' || i.Status === 'Habis').length,
+          totalStockValue: Math.round(items.reduce((s,i)=> s + asNum(i.StockValue), 0) * 100) / 100
+        };
+
+        // top usage for selected month
+        let topUsage = [];
+        if(month){
+          const { data, error } = await s
+            .from('v_usage_monthly')
+            .select('item_code, qty')
+            .eq('ym', month)
+            .order('qty', { ascending:false })
+            .limit(10);
+          if(error) throw error;
+          topUsage = (data||[]).map(r => ({ ItemCode: r.item_code, Qty: asNum(r.qty) }));
+        }
+
+        // stock value by category
+        const catAgg = {};
+        items.forEach(it => {
+          const cat = (it.Category || '').trim() || 'Uncategorized';
+          const val = asNum(it.StockValue);
+          catAgg[cat] = (catAgg[cat] || 0) + val;
+        });
+        const stockValueByCategory = Object.keys(catAgg)
+          .map(k => ({ Category:k, Value: Math.round(catAgg[k]*100)/100 }))
+          .filter(x => x.Value > 0)
+          .sort((a,b)=>b.Value-a.Value);
+
+        // recent movements
+        const recent = await apiCall('movements.recent', { limit: 12 });
+
+        return {
+          ok:true,
+          month,
+          summary,
+          items,
+          charts: { topUsage, stockValueByCategory },
+          recent: recent.movements || []
+        };
+      }
+
+      if(method === 'movements.recent'){
+        const limit = Number(payload.limit || 12);
+        const { data, error } = await s
+          .from('v_movements')
+          .select('*')
+          .order('tx_date', { ascending:false })
+          .order('created_at', { ascending:false })
+          .limit(limit);
+        if(error) throw error;
+        const rows = (data||[]).map(r => ({
+          type: r.type,
+          Date: r.tx_date,
+          ItemCode: r.item_code,
+          Qty: asNum(r.qty),
+          By: r.by_name || '',
+          Notes: r.notes || '',
+          CreatedAt: r.created_at || ''
+        }));
+        return { ok:true, movements: rows };
+      }
+
+      // ===== WIP =====
+      if(method === 'wip.list'){
+        const limit = Number(payload.limit || 500);
+
+        const cfg = await apiCall('config.get', {});
+        const stages = String(cfg.config?.WIP_STAGES || 'Received|Done').split('|').map(s=>s.trim()).filter(Boolean);
+
+        const { data, error } = await s
+          .from('v_wip')
+          .select('*')
+          .order('in_date', { ascending:false })
+          .order('updated_at', { ascending:false })
+          .limit(limit);
+        if(error) throw error;
+
+        return { ok:true, wip: (data||[]).map(mapWip_), stages };
+      }
+
+      if(method === 'wip.add'){
+        const row = {
+          in_date: String(payload.InDate||'').trim(),
+          component_code: String(payload.ComponentCode||'').trim(),
+          component_name: String(payload.ComponentName||'').trim(),
+          stage: String(payload.Stage||'Received').trim(),
+          percent: asNum(payload.Percent),
+          status: String(payload.Status||'In Progress').trim(),
+          out_date: (String(payload.OutDate||'').trim() || null),
+          notes: String(payload.Notes||'').trim()
+        };
+        if(!row.in_date || !row.component_name) return { ok:false, message:'InDate dan ComponentName wajib.' };
+
+        const { error } = await s.from('wip').insert(row);
+        if(error) return { ok:false, message: error.message || 'Gagal simpan WIP' };
+        return { ok:true, message:'WIP tersimpan.' };
+      }
+
+      if(method === 'wip.update'){
+        const id = String(payload.WIPId||'').trim();
+        if(!id) return { ok:false, message:'WIPId wajib.' };
+
+        const patch = {
+          in_date: payload.InDate,
+          component_code: payload.ComponentCode,
+          component_name: payload.ComponentName,
+          stage: payload.Stage,
+          percent: (payload.Percent === undefined ? undefined : asNum(payload.Percent)),
+          status: payload.Status,
+          out_date: (payload.OutDate === undefined ? undefined : (String(payload.OutDate||'').trim() || null)),
+          notes: payload.Notes
+        };
+        Object.keys(patch).forEach(k => patch[k] === undefined && delete patch[k]);
+
+        const { error } = await s.from('wip').update(patch).eq('wip_id', id);
+        if(error) return { ok:false, message: error.message || 'Gagal update WIP' };
+        return { ok:true, message:'WIP diperbarui.' };
+      }
+
+      if(method === 'wip.analytics'){
+        // Ambil field minimal untuk aggregasi
+        const { data, error } = await s
+          .from('v_wip')
+          .select('stage,status,out_date,days_in_process')
+          .limit(2000);
+        if(error) throw error;
+
+        const rows = data || [];
+        const byStage = {};
+        const byStatus = {};
+        let activeCount = 0;
+        let sumDaysActive = 0;
+
+        rows.forEach(r => {
+          const stage = r.stage || 'Unknown';
+          const status = r.status || 'Unknown';
+          byStage[stage] = (byStage[stage] || 0) + 1;
+          byStatus[status] = (byStatus[status] || 0) + 1;
+
+          const done = (String(status).toLowerCase() === 'done') || (!!r.out_date);
+          if(!done){
+            activeCount += 1;
+            sumDaysActive += asNum(r.days_in_process);
+          }
+        });
+
+        const avgDaysActive = activeCount ? Math.round((sumDaysActive / activeCount) * 100) / 100 : 0;
+
+        const stageArr = Object.keys(byStage).map(k => ({ Stage:k, Count: byStage[k] })).sort((a,b)=>b.Count-a.Count);
+        const statusArr = Object.keys(byStatus).map(k => ({ Status:k, Count: byStatus[k] })).sort((a,b)=>b.Count-a.Count);
+
+        return { ok:true, kpi:{ total: rows.length, active: activeCount, avgDaysActive }, charts:{ byStage: stageArr, byStatus: statusArr } };
+      }
+
+      // placeholder; will never reach
+      throw new Error('Unknown method: ' + method);
+
+    }catch(e){
+      return { ok:false, message: (e && e.message) ? e.message : String(e) };
     }
   }
+
+  function setUserPill(){
+    const el = document.getElementById('userPill');
+    if (!me) el.textContent = 'Not logged in';
+    else el.textContent = `${me.displayName} • ${me.role}`;
+  }
+
   function todayISO(){
     const d = new Date();
-    const pad = (x)=> String(x).padStart(2,'0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  }
-  function showLoader(text='Memuat...', sub='Sedang sinkron data…'){
-    const mask = document.getElementById('loaderMask');
-    document.getElementById('loaderText').textContent = text;
-    document.getElementById('loaderSub').textContent = sub;
-    setMascotMood(state.mascotMood, true);
-    mask.style.display = 'flex';
-  }
-  function hideLoader(){
-    document.getElementById('loaderMask').style.display = 'none';
-  }
-  function toast(msg, kind='good'){
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = 'toast ' + (kind === 'bad' ? 'bad' : 'good');
-    t.style.display = 'block';
-    setTimeout(()=> t.style.display = 'none', 2600);
-  }
-  function setMascotMood(mood, silent=false){
-    state.mascotMood = mood;
-    const m = document.getElementById('mascot');
-    m.classList.remove('moodAngry');
-    if (mood === 'angry') m.classList.add('moodAngry');
-    if (!silent) toast('Mascot mood: ' + (mood === 'angry' ? 'marah 😤' : 'imut 🥺'), 'good');
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${yyyy}-${mm}-${dd}`;
   }
 
-  function openModal(title, bodyHTML){
-    document.getElementById('modalTitle').textContent = title;
-    document.getElementById('modalBody').innerHTML = bodyHTML;
-    document.getElementById('modalMask').style.display = 'flex';
-  }
-  function closeModal(){
-    document.getElementById('modalMask').style.display = 'none';
+  function initMonthPicker(){
+    const mp = document.getElementById('monthPick');
+    const d = new Date();
+    const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    mp.value = ym;
+
+    // eval default (optional)
+    document.getElementById('evalMonth').value = ym;
   }
 
-  function esc(s){
-    s = String(s ?? '');
-    return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  function toggleBootstrap(){
+    document.getElementById('bootstrapBox').classList.toggle('hidden');
   }
 
-  function emailFromUserId(userId){
-    const v = String(userId || '').trim();
-    if (!v) return '';
-    if (v.includes('@')) return v;
-    return v + ID_EMAIL_SUFFIX;
-  }
-  function userIdFromEmail(email){
-    const e = String(email || '');
-    const i = e.indexOf('@');
-    return i >= 0 ? e.slice(0,i) : e;
+  function showPage(page){
+    document.getElementById('pageOps').classList.toggle('hidden', page !== 'ops');
+    document.getElementById('pageEval').classList.toggle('hidden', page !== 'eval');
+    document.getElementById('pageBtnOps').classList.toggle('active', page === 'ops');
+    document.getElementById('pageBtnEval').classList.toggle('active', page === 'eval');
+
+    localStorage.setItem('inv_last_page', page);
+
+    // refresh eval page when opened (optional)
+    if(page === 'eval' && evalCache.length === 0){
+      // do nothing automatically; user clicks generate
+    }
   }
 
-  // =========================
-  // DB mappers
-  // =========================
-  function txFromRow(r){
+  function showTab(tab){
+    const map = {
+      dashboard:['tabDashboard','tabBtnDashboard'],
+      items:['tabItems','tabBtnItems'],
+      inbound:['tabInbound','tabBtnInbound'],
+      usage:['tabUsage','tabBtnUsage'],
+      wip:['tabWip','tabBtnWip']
+    };
+    Object.keys(map).forEach(k=>{
+      document.getElementById(map[k][0]).classList.toggle('hidden', k!==tab);
+      document.getElementById(map[k][1]).classList.toggle('active', k===tab);
+    });
+    localStorage.setItem('inv_last_tab', tab);
+  }
+
+  // ====== Sorting ======
+  function setSort(key){
+    if (sortKey === key) sortDir = (sortDir === 'asc' ? 'desc' : 'asc');
+    else { sortKey = key; sortDir = 'asc'; }
+    renderItemsTable();
+  }
+
+  // ====== Formatting ======
+  function numFmt(x){
+    const n = Number(x);
+    if(!isFinite(n)) return '0';
+    return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 3 }).format(n);
+  }
+  function moneyFmt(x){
+    const n = Number(x);
+    if(!isFinite(n)) return '0';
+    return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n);
+  }
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  }
+  function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
+
+  function statusTag(status){
+    if(status === 'Aman') return '<span class="tag ok">Aman</span>';
+    if(status === 'Reorder') return '<span class="tag warn">Reorder</span>';
+    if(status === 'Di bawah Safety') return '<span class="tag danger">Di bawah Safety</span>';
+    if(status === 'Habis') return '<span class="tag danger">Habis</span>';
+    return `<span class="tag">${escapeHtml(status||'')}</span>`;
+  }
+  function prioTag(p){
+    const s = String(p||'');
+    if(s==='High') return '<span class="tag danger">High</span>';
+    if(s==='Medium') return '<span class="tag warn">Medium</span>';
+    return '<span class="tag ok">Low</span>';
+  }
+
+  // ====== Render: Dashboard Items table ======
+  function renderItemsTable(){
+    const q = document.getElementById('searchItems').value.trim().toLowerCase();
+    const statusFilter = document.getElementById('filterStatus').value || '';
+    const tbody = document.getElementById('itemsTbody');
+
+    let rows = (itemsCache || []).slice();
+
+    if (q) {
+      rows = rows.filter(i =>
+        (i.ItemCode||'').toLowerCase().includes(q) ||
+        (i.ItemName||'').toLowerCase().includes(q)
+      );
+    }
+    if (statusFilter) rows = rows.filter(i => (i.Status||'') === statusFilter);
+
+    rows.sort((a,b)=>{
+      const dir = (sortDir === 'asc' ? 1 : -1);
+      const va = a[sortKey];
+      const vb = b[sortKey];
+      if (typeof va === 'number' && typeof vb === 'number') return dir * (va - vb);
+      return dir * String(va||'').localeCompare(String(vb||''), 'id', { numeric:true, sensitivity:'base' });
+    });
+
+    document.getElementById('itemsEmpty').style.display = (itemsCache.length === 0) ? 'block' : 'none';
+
+    tbody.innerHTML = rows.map(i => `
+      <tr>
+        <td>
+          <div style="font-weight:900;" class="mono">${escapeHtml(i.ItemCode||'')}</div>
+          <div class="muted" style="font-size:12px; margin-top:2px;">${escapeHtml(i.ItemName||'')}</div>
+        </td>
+        <td>${escapeHtml(i.Category||'')}</td>
+        <td class="mono right" style="font-weight:900;">${numFmt(i.CurrentStock)}</td>
+        <td>${escapeHtml(i.Unit||'')}</td>
+        <td class="mono right">${numFmt(i.SafetyStock)}</td>
+        <td class="mono right">${numFmt(i.ROP)}</td>
+        <td>${statusTag(i.Status)}</td>
+      </tr>
+    `).join('');
+  }
+
+  // ====== Render: Master Items ======
+  function renderMasterItems(){
+    const q = document.getElementById('searchMaster').value.trim().toLowerCase();
+    const tbody = document.getElementById('itemsMasterTbody');
+
+    const rows = (itemsCache || []).filter(i => {
+      if (!q) return true;
+      return (i.ItemCode||'').toLowerCase().includes(q) || (i.ItemName||'').toLowerCase().includes(q);
+    });
+
+    document.getElementById('masterEmpty').style.display = (itemsCache.length === 0) ? 'block' : 'none';
+
+    tbody.innerHTML = rows.map(i => `
+      <tr>
+        <td class="mono" style="font-weight:900;">${escapeHtml(i.ItemCode||'')}</td>
+        <td>${escapeHtml(i.ItemName||'')}</td>
+        <td>${escapeHtml(i.Category||'')}</td>
+        <td>${escapeHtml(i.Unit||'')}</td>
+        <td class="mono right">${numFmt(i.LeadTimeDays)}</td>
+        <td class="mono right">${numFmt(i.AvgMonthlyUsage)}</td>
+        <td class="mono right">${numFmt(i.SafetyStock)}</td>
+        <td>
+          <button class="btn" style="padding:7px 10px" onclick="editItem('${escapeAttr(i.ItemCode)}')">Edit</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function bindItemSelects(){
+    const opts = (itemsCache || []).map(i =>
+      `<option value="${escapeAttr(i.ItemCode)}">${escapeHtml(i.ItemCode)} — ${escapeHtml(i.ItemName||'')}</option>`
+    ).join('');
+    document.getElementById('inItem').innerHTML = opts;
+    document.getElementById('usItem').innerHTML = opts;
+  }
+
+  // ====== Render: Movements ======
+  function renderMovements(movs){
+    const tbody = document.getElementById('movTbody');
+    const empty = document.getElementById('movEmpty');
+
+    if (!movs || movs.length === 0){
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    tbody.innerHTML = movs.map(m => `
+      <tr>
+        <td>${escapeHtml(m.type||'')}</td>
+        <td class="mono">${escapeHtml(m.Date||'')}</td>
+        <td class="mono" style="font-weight:900;">${escapeHtml(m.ItemCode||'')}</td>
+        <td class="mono right">${numFmt(m.Qty)}</td>
+        <td>${escapeHtml(m.By||'')}</td>
+        <td class="muted">${escapeHtml(m.Notes||'')}</td>
+      </tr>
+    `).join('');
+  }
+
+  // ====== Charts (theme-aware) ======
+  function chartAxisOpts(){
     return {
-      txId: r.id,
-      userId: r.user_id,
-      date: r.date,
-      amount: Number(r.amount || 0),
-      category: r.category || '',
-      note: r.note || '',
-      createdAt: r.created_at || '',
-      updatedAt: r.updated_at || ''
+      ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--chartText').trim() || '#111827' },
+      grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--chartGrid').trim() || 'rgba(17,24,39,.10)' }
     };
   }
-  function goalFromRow(r){
-    return {
-      goalId: r.id,
-      userId: r.user_id,
-      goalName: r.goal_name,
-      goalAmount: Number(r.goal_amount || 0),
-      targetDate: r.target_date,
-      lastCalcAt: r.last_calc_at,
-      currentBalanceAtCalc: Number(r.current_balance_at_calc || 0),
-      monthsRemainingAtCalc: Number(r.months_remaining_at_calc || 0),
-      requiredMonthlyNet: Number(r.required_monthly_net || 0),
-      projectedMonthlyNet: Number(r.projected_monthly_net || 0),
-      projectedBalanceAtTarget: Number(r.projected_balance_at_target || 0),
-      status: r.status || ''
-    };
-  }
 
-  // =========================
-  // Auth flow
-  // =========================
-  async function ensureProfile(user, fallbackName){
-    try{
-      const { data, error } = await sb.from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (error) throw error;
-      if (!data){
-        // create
-        const { error:insErr } = await sb.from('profiles')
-          .insert({ id: user.id, full_name: fallbackName || userIdFromEmail(user.email) });
-        if (insErr) throw insErr;
-        return fallbackName || userIdFromEmail(user.email);
+  function renderTopUsageChart(data){
+    const labels = (data || []).map(x => x.ItemCode);
+    const values = (data || []).map(x => x.Qty);
+
+    document.getElementById('topUsageEmpty').style.display = (!data || data.length === 0) ? 'block' : 'none';
+
+    const ctx = document.getElementById('chartTopUsage');
+    if(chartTop) chartTop.destroy();
+
+    chartTop = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Qty', data: values }] },
+      options: {
+        responsive:true,
+        plugins: { legend: { display:false } },
+        scales: { x: chartAxisOpts(), y: chartAxisOpts() }
       }
-      return data.full_name || (fallbackName || userIdFromEmail(user.email));
-    } catch(e){
-      console.warn('ensureProfile failed:', e);
-      return fallbackName || userIdFromEmail(user.email);
-    }
+    });
   }
 
-  async function handleLogin(){
-    const userId = document.getElementById('loginUserId').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    if (!userId || !password) return toast('ID dan password wajib diisi.', 'bad');
+  function renderPieChart(data){
+    const labels = (data || []).map(x => x.Category);
+    const values = (data || []).map(x => x.Value);
 
-    showLoader('Login…', 'Memverifikasi akun…');
-    try{
-      const email = emailFromUserId(userId);
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+    document.getElementById('pieEmpty').style.display = (!data || data.length === 0) ? 'block' : 'none';
 
-      state.session = data.session;
-      state.userId = userIdFromEmail(data.user.email);
+    const ctx = document.getElementById('chartByCategory');
+    if(chartPie) chartPie.destroy();
 
-      state.fullName = await ensureProfile(data.user, state.userId);
-
-      await bootstrapApp();
-      toast('Login sukses ✅', 'good');
-    } catch(e){
-      toast(e.message || String(e), 'bad');
-      console.error(e);
-    } finally {
-      hideLoader();
-    }
-  }
-
-  async function logout(){
-    showLoader('Logout…','Menutup session…');
-    try{
-      await sb.auth.signOut();
-    } catch(e){}
-    state.session = null;
-    state.userId = null;
-    state.fullName = null;
-    hideLoader();
-    showLogin();
-  }
-
-  async function autoLogin(){
-    showLoader('Memulihkan session…','Cek token…');
-    try{
-      const { data, error } = await sb.auth.getSession();
-      if (error) throw error;
-      const session = data.session;
-      if (!session){
-        showLogin(); return;
+    chartPie = new Chart(ctx, {
+      type: 'pie',
+      data: { labels, datasets: [{ data: values }] },
+      options: {
+        responsive:true,
+        plugins: {
+          legend: { position:'bottom', labels: { color: chartAxisOpts().ticks.color } },
+          tooltip: { callbacks: { label: (c) => `${c.label}: ${moneyFmt(c.raw)}` } }
+        }
       }
-      state.session = session;
-      const user = session.user;
-      state.userId = userIdFromEmail(user.email);
-      state.fullName = await ensureProfile(user, state.userId);
-      await bootstrapApp();
-    } catch(e){
-      console.warn(e);
-      showLogin();
-    } finally {
-      hideLoader();
+    });
+  }
+
+  // ====== Data Loading ======
+  async function loadConfig(){
+    try{
+      const res = await apiCall('config.get', {});
+      config = res.config || null;
+      if(config){
+        document.getElementById('appTitle').textContent = config.APP_NAME || 'Inventory & WIP';
+        const sub = config.COMPANY_NAME ? `Sistem stok + WIP untuk ${config.COMPANY_NAME}.` : 'Sistem stok (Inbound/Usage), WIP, dan rekomendasi kebutuhan bulanan.';
+        document.getElementById('appSubtitle').textContent = sub;
+        document.title = config.APP_NAME || document.title;
+
+        document.getElementById('evalLookback').value = String(config.EVAL_LOOKBACK_MONTHS || 3);
+      }
+    }catch(e){
+      // ignore
     }
   }
 
-  function showLogin(){
-    document.getElementById('loginView').style.display = 'flex';
-    document.getElementById('appView').style.display = 'none';
-    // demo convenience (hapus kalau tidak mau)
-    document.getElementById('loginUserId').value = 'admin';
-    document.getElementById('loginPassword').value = 'admin123';
-  }
-  function showApp(){
-    document.getElementById('loginView').style.display = 'none';
-    document.getElementById('appView').style.display = 'block';
-    document.getElementById('sessionUser').textContent = state.userId || '—';
-    document.getElementById('welcomeText').textContent = `Halo, ${state.fullName || state.userId}.`;
-  }
+  async function loadItems(includeAll){
+    try{
+      // staff/admin bisa listAll, viewer fallback ke list biasa
+      let res = null;
+      if(includeAll){
+        try{
+          res = await apiCall('items.listAll', {});
+        }catch(e){
+          if(String(e).includes('Forbidden')) res = await apiCall('items.list', {});
+          else throw e;
+        }
+      } else {
+        res = await apiCall('items.list', {});
+      }
 
-  // =========================
-  // Data functions (Supabase)
-  // =========================
-  async function apiGetSummary(){
-    const { data, error } = await sb.rpc('get_summary', { months_n: AVG_MONTHS_FOR_FORECAST });
-    if (error) throw error;
-    return {
-      totalIn: Number(data.total_in || 0),
-      totalOut: Number(data.total_out || 0),
-      balance: Number(data.balance || 0),
-      avgMonthlyNet: Number(data.avg_monthly_net || 0)
-    };
-  }
-
-  async function apiListTransactions(type){
-    const { data, error } = await sb.from('transactions')
-      .select('id,user_id,date,amount,category,note,created_at,updated_at')
-      .eq('type', type)
-      .order('date', { ascending:false })
-      .limit(1000);
-    if (error) throw error;
-    return (data || []).map(txFromRow);
-  }
-
-  async function apiAddTransaction(type, payload){
-    const insertRow = {
-      user_id: state.session?.user?.id,
-      type,
-      date: payload.date,
-      amount: Number(payload.amount || 0),
-      category: payload.category || '',
-      note: payload.note || ''
-    };
-    const { data, error } = await sb.from('transactions')
-      .insert(insertRow)
-      .select('id,user_id,date,amount,category,note,created_at,updated_at')
-      .single();
-    if (error) throw error;
-    return txFromRow(data);
-  }
-
-  async function apiUpdateTransaction(type, txId, payload){
-    const updRow = {
-      date: payload.date,
-      amount: Number(payload.amount || 0),
-      category: payload.category || '',
-      note: payload.note || ''
-    };
-    const { error } = await sb.from('transactions')
-      .update(updRow)
-      .eq('id', txId)
-      .eq('type', type);
-    if (error) throw error;
-    return true;
-  }
-
-  async function apiDeleteTransaction(type, txId){
-    const { error } = await sb.from('transactions')
-      .delete()
-      .eq('id', txId)
-      .eq('type', type);
-    if (error) throw error;
-    return true;
-  }
-
-  async function apiListGoals(){
-    const { data, error } = await sb.from('goals')
-      .select('id,user_id,goal_name,goal_amount,target_date,last_calc_at,current_balance_at_calc,months_remaining_at_calc,required_monthly_net,projected_monthly_net,projected_balance_at_target,status,created_at')
-      .order('created_at', { ascending:false })
-      .limit(200);
-    if (error) throw error;
-    return (data || []).map(goalFromRow);
-  }
-
-  async function apiAddGoal(payload){
-    const row = {
-      user_id: state.session?.user?.id,
-      goal_name: payload.goalName,
-      goal_amount: Number(payload.goalAmount || 0),
-      target_date: payload.targetDate
-    };
-    const { data, error } = await sb.from('goals')
-      .insert(row)
-      .select('id,user_id,goal_name,goal_amount,target_date,last_calc_at,current_balance_at_calc,months_remaining_at_calc,required_monthly_net,projected_monthly_net,projected_balance_at_target,status,created_at')
-      .single();
-    if (error) throw error;
-    return goalFromRow(data);
-  }
-
-  async function apiUpdateGoalCalc(goalId, calc){
-    const row = {
-      last_calc_at: new Date().toISOString(),
-      current_balance_at_calc: calc.currentBalance,
-      months_remaining_at_calc: calc.monthsRemaining,
-      required_monthly_net: calc.requiredMonthlyNet,
-      projected_monthly_net: calc.projectedMonthlyNet,
-      projected_balance_at_target: calc.projectedBalanceAtTarget,
-      status: calc.status
-    };
-    const { error } = await sb.from('goals')
-      .update(row)
-      .eq('id', goalId);
-    if (error) throw error;
-    return true;
-  }
-
-  async function apiDeleteGoal(goalId){
-    const { error } = await sb.from('goals')
-      .delete()
-      .eq('id', goalId);
-    if (error) throw error;
-    return true;
-  }
-
-  // =========================
-  // Forecast logic (mirror GAS)
-  // =========================
-  function computeForecast(goalAmount, targetDateISO){
-    const currentBalance = state.summary.balance;
-    const projectedMonthlyNet = state.summary.avgMonthlyNet;
-
-    const today = new Date();
-    const target = new Date(targetDateISO + 'T00:00:00');
-    const days = Math.floor((target.getTime() - today.getTime()) / (1000*60*60*24));
-    const monthsRemaining = days <= 0 ? 0 : Math.max(1, Math.ceil(days / 30.4375));
-
-    const gap = Number(goalAmount || 0) - Number(currentBalance || 0);
-    const requiredMonthlyNet = monthsRemaining <= 0 ? (gap > 0 ? gap : 0) : Math.max(0, gap / monthsRemaining);
-
-    const projectedBalanceAtTarget = Number(currentBalance || 0) + Number(projectedMonthlyNet || 0) * monthsRemaining;
-
-    let status;
-    if (monthsRemaining <= 0) {
-      status = (currentBalance >= goalAmount) ? '✅ Target tercapai' : '⛔ Target lewat, belum tercapai';
-    } else if (projectedBalanceAtTarget >= goalAmount) {
-      status = '✅ On track (berdasarkan rata-rata net bulanan)';
-    } else {
-      const extra = (goalAmount - projectedBalanceAtTarget) / monthsRemaining;
-      status = `⚠️ Perlu tambah net +${Math.ceil(extra)} / bulan`;
+      itemsCache = res.items || [];
+      renderMasterItems();
+      bindItemSelects();
+      renderItemsTable();
+    }catch(e){
+      if(String(e).includes('Unauthorized')) return logout(true);
+      toast('Load items error: ' + (e.message || e));
     }
-
-    return {
-      currentBalance,
-      projectedMonthlyNet,
-      monthsRemaining,
-      requiredMonthlyNet,
-      projectedBalanceAtTarget,
-      status
-    };
   }
 
-  // =========================
-  // Data Load
-  // =========================
-  async function bootstrapApp(){
-    showApp();
-    document.getElementById('qaDate').value = todayISO();
-    await refreshAll();
-    switchTab('dashboard');
+  async function refreshDashboard(){
+    try{
+      const month = document.getElementById('monthPick').value;
+      const res = await apiCall('dashboard.get', {month});
+      dashCache = res;
+
+      document.getElementById('pillMonth').textContent = res.month || month;
+
+      document.getElementById('kpiTotalItems').textContent = res.summary.totalItems;
+      document.getElementById('kpiReorder').textContent = res.summary.reorderCount;
+      document.getElementById('kpiBelowSafety').textContent = res.summary.belowSafetyCount;
+      document.getElementById('kpiValue').textContent = moneyFmt(res.summary.totalStockValue);
+
+      itemsCache = res.items || itemsCache;
+      renderItemsTable();
+
+      renderMovements(res.recent?.movements || []);
+      renderTopUsageChart(res.charts?.topUsage || []);
+      renderPieChart(res.charts?.stockValueByCategory || []);
+    }catch(e){
+      if(String(e).includes('Unauthorized')) return logout(true);
+      toast('Dashboard error: ' + (e.message || e));
+    }
+  }
+
+  async function loadInbound(){
+    try{
+      const res = await apiCall('inbound.list', {limit: 200});
+      inboundCache = res.inbound || [];
+      renderInboundTable();
+    }catch(e){
+      toast('Inbound list error: ' + (e.message || e));
+    }
+  }
+
+  function renderInboundTable(){
+    const q = document.getElementById('searchInbound').value.trim().toLowerCase();
+    const rows = (inboundCache || []).filter(r=>{
+      if(!q) return true;
+      return (r.ItemCode||'').toLowerCase().includes(q) || (r.Supplier||'').toLowerCase().includes(q);
+    });
+
+    document.getElementById('inboundEmpty').style.display = (rows.length===0) ? 'block' : 'none';
+
+    const tb = document.getElementById('inboundTbody');
+    tb.innerHTML = rows.map(r=>`
+      <tr>
+        <td class="mono">${escapeHtml(r.Date||'')}</td>
+        <td class="mono" style="font-weight:900;">${escapeHtml(r.ItemCode||'')}</td>
+        <td class="mono right">${numFmt(r.Qty)}</td>
+        <td class="mono right">${moneyFmt(r.UnitCost)}</td>
+        <td>${escapeHtml(r.Supplier||'')}</td>
+        <td><button class="btn" style="padding:7px 10px" onclick="editInbound('${escapeAttr(r.TxId)}')">Edit</button></td>
+      </tr>
+    `).join('');
+  }
+
+  async function loadUsage(){
+    try{
+      const res = await apiCall('usage.list', {limit: 200});
+      usageCache = res.usage || [];
+      renderUsageTable();
+    }catch(e){
+      toast('Usage list error: ' + (e.message || e));
+    }
+  }
+
+  function renderUsageTable(){
+    const q = document.getElementById('searchUsage').value.trim().toLowerCase();
+    const rows = (usageCache || []).filter(r=>{
+      if(!q) return true;
+      return (r.ItemCode||'').toLowerCase().includes(q) || (r.Notes||'').toLowerCase().includes(q);
+    });
+
+    document.getElementById('usageEmpty').style.display = (rows.length===0) ? 'block' : 'none';
+
+    const tb = document.getElementById('usageTbody');
+    tb.innerHTML = rows.map(r=>`
+      <tr>
+        <td class="mono">${escapeHtml(r.Date||'')}</td>
+        <td class="mono" style="font-weight:900;">${escapeHtml(r.ItemCode||'')}</td>
+        <td class="mono right">${numFmt(r.Qty)}</td>
+        <td class="muted">${escapeHtml(r.Notes||'')}</td>
+        <td><button class="btn" style="padding:7px 10px" onclick="editUsage('${escapeAttr(r.TxId)}')">Edit</button></td>
+      </tr>
+    `).join('');
+  }
+
+  async function loadWip(){
+    try{
+      const res = await apiCall('wip.list', {limit: 500});
+      wipCache = res.wip || [];
+      wipStages = res.stages || [];
+      bindWipStages();
+      renderWipTable();
+      await refreshWipAnalytics();
+    }catch(e){
+      toast('WIP list error: ' + (e.message || e));
+    }
+  }
+
+  function bindWipStages(){
+    const sel = document.getElementById('wipStage');
+    const stages = (wipStages && wipStages.length) ? wipStages : ['Received','Done'];
+    sel.innerHTML = stages.map(s => `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`).join('');
+  }
+
+  function renderWipTable(){
+    const q = document.getElementById('searchWip').value.trim().toLowerCase();
+    const rows = (wipCache || []).filter(r=>{
+      if(!q) return true;
+      return (r.ComponentName||'').toLowerCase().includes(q) || (r.Stage||'').toLowerCase().includes(q) || (r.Status||'').toLowerCase().includes(q);
+    });
+
+    document.getElementById('wipEmpty').style.display = (rows.length===0) ? 'block' : 'none';
+
+    const tb = document.getElementById('wipTbody');
+    tb.innerHTML = rows.map(r=>`
+      <tr>
+        <td class="mono">${escapeHtml(r.InDate||'')}</td>
+        <td>
+          <div style="font-weight:900;">${escapeHtml(r.ComponentName||'')}</div>
+          <div class="muted mono" style="font-size:12px;">${escapeHtml(r.ComponentCode||'')}</div>
+        </td>
+        <td>${escapeHtml(r.Stage||'')}</td>
+        <td class="mono right">${numFmt(r.Percent)}</td>
+        <td>${escapeHtml(r.Status||'')}</td>
+        <td class="mono right">${numFmt(r.DaysInProcess)}</td>
+        <td><button class="btn" style="padding:7px 10px" onclick="editWip('${escapeAttr(r.WIPId)}')">Edit</button></td>
+      </tr>
+    `).join('');
+  }
+
+  async function refreshWipAnalytics(){
+    const res = await apiCall('wip.analytics', {});
+    const k = res.kpi || { total:0, active:0, avgDaysActive:0 };
+    document.getElementById('kpiWipTotal').textContent = k.total;
+    document.getElementById('kpiWipActive').textContent = k.active;
+    document.getElementById('kpiWipAvgDays').textContent = numFmt(k.avgDaysActive);
+    const done = (res.charts?.byStatus || []).find(x => String(x.Status).toLowerCase()==='done')?.Count || 0;
+    document.getElementById('kpiWipDone').textContent = done;
+
+    renderWipStageChart(res.charts?.byStage || []);
+    renderWipStatusChart(res.charts?.byStatus || []);
+  }
+
+  function renderWipStageChart(data){
+    const labels = (data||[]).map(x=>x.Stage);
+    const values = (data||[]).map(x=>x.Count);
+
+    const ctx = document.getElementById('chartWipStage');
+    if(chartWipStage) chartWipStage.destroy();
+    chartWipStage = new Chart(ctx, {
+      type:'bar',
+      data:{ labels, datasets:[{ label:'Count', data: values }] },
+      options:{
+        responsive:true,
+        plugins:{ legend:{ display:false } },
+        scales:{ x: chartAxisOpts(), y: chartAxisOpts() }
+      }
+    });
+  }
+
+  function renderWipStatusChart(data){
+    const labels = (data||[]).map(x=>x.Status);
+    const values = (data||[]).map(x=>x.Count);
+
+    const ctx = document.getElementById('chartWipStatus');
+    if(chartWipStatus) chartWipStatus.destroy();
+    chartWipStatus = new Chart(ctx, {
+      type:'pie',
+      data:{ labels, datasets:[{ data: values }] },
+      options:{
+        responsive:true,
+        plugins:{ legend:{ position:'bottom', labels:{ color: chartAxisOpts().ticks.color } } }
+      }
+    });
   }
 
   async function refreshAll(){
-    showLoader('Sync…', 'Ambil data inflow/outbound/goals…');
+    setOverlay(true, 'Memuat data...');
     try{
-      const [sum, inflow, outbound, goals] = await Promise.all([
-        apiGetSummary(),
-        apiListTransactions('inflow'),
-        apiListTransactions('outbound'),
-        apiListGoals()
-      ]);
-
-      state.summary = sum;
-      state.inflow = inflow;
-      state.outbound = outbound;
-      state.goals = goals;
-
-      render();
-      toast('Data tersinkron ✅', 'good');
-    } catch(e){
-      toast(e.message || String(e), 'bad');
-      console.error(e);
+      await loadConfig();
+      await loadItems(true);
+      await refreshDashboard();
+      await loadInbound();
+      await loadUsage();
+      await loadWip();
     } finally {
-      hideLoader();
+      setOverlay(false);
     }
   }
 
-  // =========================
-  // Tabs + Render
-  // =========================
-  function switchTab(tab){
-    state.activeTab = tab;
-    document.querySelectorAll('.tab').forEach(x=>{
-      x.classList.toggle('active', x.dataset.tab === tab);
+  // ====== Auth ======
+  async function login(){
+    const userId = document.getElementById('loginUserId').value.trim();
+    const password = document.getElementById('loginPass').value.trim();
+
+    if(!userId || !password){
+      toast('User ID dan password wajib diisi.');
+      return;
+    }
+
+    setOverlay(true, 'Login...');
+
+    try{
+      const res = await apiCall('bootstrapAdmin', { userId, displayName, password });
+      if(!res.ok){
+        toast(res.message || 'Gagal membuat admin');
+        return;
+      }
+
+      toast('Admin dibuat. Silakan login.');
+      toggleBootstrap();
+    }catch(e){
+      toast('Error: ' + (e.message || e));
+    }finally{
+      setOverlay(false);
+    }
+  }
+  async function register(){
+    const userId = document.getElementById('loginUserId').value.trim();
+    const password = document.getElementById('loginPass').value.trim();
+
+    if(!userId || !password){
+      toast('User ID dan password wajib diisi.');
+      return;
+    }
+
+    setOverlay(true, 'Membuat akun...');
+
+    try{
+      // Sign up user baru (role default viewer; admin bisa ubah role via Supabase UI)
+      const res = await apiCall('bootstrapAdmin', { userId, displayName: userId, password });
+      if(!res.ok){
+        toast(res.message || 'Gagal membuat akun');
+        return;
+      }
+      toast('Akun dibuat. Silakan login.');
+    }catch(e){
+      toast('Error: ' + (e.message || e));
+    }finally{
+      setOverlay(false);
+    }
+  }
+  // ====== Actions: Items (Add/Edit) ======
+  function editItem(itemCode){
+    const it = (itemsCache||[]).find(x => x.ItemCode === itemCode);
+    if(!it) return;
+
+    editingItemCode = it.ItemCode;
+
+    document.getElementById('itemFormTitle').textContent = 'Edit Item';
+    document.getElementById('btnSaveItem').textContent = 'Update Item';
+    document.getElementById('btnCancelItemEdit').style.display = 'inline-flex';
+
+    document.getElementById('itCode').value = it.ItemCode || '';
+    document.getElementById('itCode').disabled = true;
+    document.getElementById('itName').value = it.ItemName || '';
+    document.getElementById('itCat').value = it.Category || '';
+    document.getElementById('itUnit').value = it.Unit || '';
+    document.getElementById('itOpen').value = it.OpeningStock ?? 0;
+    document.getElementById('itCost').value = it.UnitCost ?? 0;
+    document.getElementById('itLT').value = it.LeadTimeDays ?? 0;
+    document.getElementById('itAvg').value = it.AvgMonthlyUsage ?? 0;
+    document.getElementById('itSafety').value = it.SafetyStock ?? 0;
+    document.getElementById('itMin').value = it.MinStock ?? 0;
+    document.getElementById('itMax').value = it.MaxStock ?? 0;
+
+    showTab('items');
+  }
+
+  function cancelItemEdit(){
+    editingItemCode = '';
+    document.getElementById('itemFormTitle').textContent = 'Tambah Item';
+    document.getElementById('btnSaveItem').textContent = 'Simpan Item';
+    document.getElementById('btnCancelItemEdit').style.display = 'none';
+    document.getElementById('itCode').disabled = false;
+
+    ['itCode','itName','itCat','itUnit','itOpen','itCost','itLT','itAvg','itSafety','itMin','itMax']
+      .forEach(id => document.getElementById(id).value = '');
+  }
+
+  async function saveItem(){
+    const payload = {
+      ItemCode: document.getElementById('itCode').value.trim(),
+      ItemName: document.getElementById('itName').value.trim(),
+      Category: document.getElementById('itCat').value.trim(),
+      Unit: document.getElementById('itUnit').value.trim(),
+      OpeningStock: Number(document.getElementById('itOpen').value || 0),
+      UnitCost: Number(document.getElementById('itCost').value || 0),
+      LeadTimeDays: Number(document.getElementById('itLT').value || 0),
+      AvgMonthlyUsage: Number(document.getElementById('itAvg').value || 0),
+      SafetyStock: Number(document.getElementById('itSafety').value || 0),
+      MinStock: Number(document.getElementById('itMin').value || 0),
+      MaxStock: Number(document.getElementById('itMax').value || 0),
+    };
+
+    if(!payload.ItemCode || !payload.ItemName){
+      toast('ItemCode dan ItemName wajib.');
+      return;
+    }
+
+    setOverlay(true, editingItemCode ? 'Update item...' : 'Simpan item...');
+
+    try{
+      const res = editingItemCode
+        ? await apiCall('items.update', payload)
+        : await apiCall('items.add', payload);
+
+      toast(res.message || 'OK');
+      cancelItemEdit();
+      await refreshAll();
+      showTab('items');
+    }catch(e){
+      toast('Item error: ' + (e.message || e));
+    }finally{
+      setOverlay(false);
+    }
+  }
+
+  // ====== Actions: Inbound (Add/Edit) ======
+  function editInbound(txId){
+    const r = (inboundCache||[]).find(x => x.TxId === txId);
+    if(!r) return;
+
+    editingInboundTx = r.TxId;
+    document.getElementById('inFormTitle').textContent = 'Edit Inbound';
+    document.getElementById('btnSaveInbound').textContent = 'Update Inbound';
+    document.getElementById('btnCancelInboundEdit').style.display = 'inline-flex';
+
+    document.getElementById('inDate').value = r.Date || todayISO();
+    document.getElementById('inItem').value = r.ItemCode || '';
+    document.getElementById('inQty').value = r.Qty ?? 0;
+    document.getElementById('inCost').value = r.UnitCost ?? 0;
+    document.getElementById('inSupplier').value = r.Supplier || '';
+    document.getElementById('inNotes').value = r.Notes || '';
+
+    showTab('inbound');
+  }
+
+  function cancelInboundEdit(){
+    editingInboundTx = '';
+    document.getElementById('inFormTitle').textContent = 'Input Inbound';
+    document.getElementById('btnSaveInbound').textContent = 'Simpan Inbound';
+    document.getElementById('btnCancelInboundEdit').style.display = 'none';
+
+    ['inQty','inCost','inSupplier','inNotes'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('inDate').value = todayISO();
+  }
+
+  async function saveInbound(){
+    const payload = {
+      TxId: editingInboundTx,
+      Date: document.getElementById('inDate').value,
+      ItemCode: document.getElementById('inItem').value,
+      Qty: Number(document.getElementById('inQty').value || 0),
+      UnitCost: Number(document.getElementById('inCost').value || 0),
+      Supplier: document.getElementById('inSupplier').value.trim(),
+      Notes: document.getElementById('inNotes').value.trim(),
+    };
+
+    if(!payload.Date || !payload.ItemCode || payload.Qty <= 0){
+      toast('Date, ItemCode, Qty wajib (Qty > 0).');
+      return;
+    }
+
+    setOverlay(true, editingInboundTx ? 'Update inbound...' : 'Simpan inbound...');
+
+    try{
+      const res = editingInboundTx
+        ? await apiCall('inbound.update', payload)
+        : await apiCall('inbound.add', payload);
+
+      toast(res.message || 'OK');
+      cancelInboundEdit();
+      await refreshAll();
+      showTab('inbound');
+    }catch(e){
+      toast('Inbound error: ' + (e.message || e));
+    }finally{
+      setOverlay(false);
+    }
+  }
+
+  // ====== Actions: Usage (Add/Edit) ======
+  function editUsage(txId){
+    const r = (usageCache||[]).find(x => x.TxId === txId);
+    if(!r) return;
+
+    editingUsageTx = r.TxId;
+    document.getElementById('usFormTitle').textContent = 'Edit Usage';
+    document.getElementById('btnSaveUsage').textContent = 'Update Usage';
+    document.getElementById('btnCancelUsageEdit').style.display = 'inline-flex';
+
+    document.getElementById('usDate').value = r.Date || todayISO();
+    document.getElementById('usItem').value = r.ItemCode || '';
+    document.getElementById('usQty').value = r.Qty ?? 0;
+    document.getElementById('usNotes').value = r.Notes || '';
+
+    showTab('usage');
+  }
+
+  function cancelUsageEdit(){
+    editingUsageTx = '';
+    document.getElementById('usFormTitle').textContent = 'Input Usage';
+    document.getElementById('btnSaveUsage').textContent = 'Simpan Usage';
+    document.getElementById('btnCancelUsageEdit').style.display = 'none';
+
+    ['usQty','usNotes'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('usDate').value = todayISO();
+  }
+
+  async function saveUsage(){
+    const payload = {
+      TxId: editingUsageTx,
+      Date: document.getElementById('usDate').value,
+      ItemCode: document.getElementById('usItem').value,
+      Qty: Number(document.getElementById('usQty').value || 0),
+      Notes: document.getElementById('usNotes').value.trim(),
+    };
+
+    if(!payload.Date || !payload.ItemCode || payload.Qty <= 0){
+      toast('Date, ItemCode, Qty wajib (Qty > 0).');
+      return;
+    }
+
+    setOverlay(true, editingUsageTx ? 'Update usage...' : 'Simpan usage...');
+
+    try{
+      const res = editingUsageTx
+        ? await apiCall('usage.update', payload)
+        : await apiCall('usage.add', payload);
+
+      toast(res.message || 'OK');
+      cancelUsageEdit();
+      await refreshAll();
+      showTab('usage');
+    }catch(e){
+      toast('Usage error: ' + (e.message || e));
+    }finally{
+      setOverlay(false);
+    }
+  }
+
+  // ====== Actions: WIP (Add/Edit) ======
+  function editWip(wipId){
+    const r = (wipCache||[]).find(x => x.WIPId === wipId);
+    if(!r) return;
+
+    editingWipId = r.WIPId;
+    document.getElementById('wipFormTitle').textContent = 'Edit Work In Progress';
+    document.getElementById('btnSaveWip').textContent = 'Update WIP';
+    document.getElementById('btnCancelWipEdit').style.display = 'inline-flex';
+
+    document.getElementById('wipInDate').value = r.InDate || todayISO();
+    document.getElementById('wipCompCode').value = r.ComponentCode || '';
+    document.getElementById('wipCompName').value = r.ComponentName || '';
+    document.getElementById('wipStage').value = r.Stage || (wipStages[0] || 'Received');
+    document.getElementById('wipPercent').value = r.Percent ?? 0;
+    document.getElementById('wipStatus').value = r.Status || 'In Progress';
+    document.getElementById('wipOutDate').value = r.OutDate || '';
+    document.getElementById('wipNotes').value = r.Notes || '';
+
+    showTab('wip');
+  }
+
+  function cancelWipEdit(){
+    editingWipId = '';
+    document.getElementById('wipFormTitle').textContent = 'Tambah Work In Progress';
+    document.getElementById('btnSaveWip').textContent = 'Simpan WIP';
+    document.getElementById('btnCancelWipEdit').style.display = 'none';
+
+    ['wipCompCode','wipCompName','wipPercent','wipOutDate','wipNotes'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('wipInDate').value = todayISO();
+    document.getElementById('wipStage').value = wipStages[0] || 'Received';
+    document.getElementById('wipStatus').value = 'In Progress';
+  }
+
+  async function saveWip(){
+    const payload = {
+      WIPId: editingWipId,
+      InDate: document.getElementById('wipInDate').value,
+      ComponentCode: document.getElementById('wipCompCode').value.trim(),
+      ComponentName: document.getElementById('wipCompName').value.trim(),
+      Stage: document.getElementById('wipStage').value,
+      Percent: Number(document.getElementById('wipPercent').value || 0),
+      Status: document.getElementById('wipStatus').value,
+      OutDate: document.getElementById('wipOutDate').value,
+      Notes: document.getElementById('wipNotes').value.trim(),
+    };
+
+    if(!payload.InDate || !payload.ComponentName){
+      toast('InDate dan ComponentName wajib.');
+      return;
+    }
+
+    setOverlay(true, editingWipId ? 'Update WIP...' : 'Simpan WIP...');
+
+    try{
+      const res = editingWipId
+        ? await apiCall('wip.update', payload)
+        : await apiCall('wip.add', payload);
+
+      toast(res.message || 'OK');
+      cancelWipEdit();
+      await refreshAll();
+      showTab('wip');
+    }catch(e){
+      toast('WIP error: ' + (e.message || e));
+    }finally{
+      setOverlay(false);
+    }
+  }
+
+  // ====== Evaluation ======
+  async function runEvaluation(){
+    const lookbackMonths = Number(document.getElementById('evalLookback').value || 3);
+    const targetMonth = document.getElementById('evalMonth').value || '';
+
+    setOverlay(true, 'Menghitung rekomendasi...');
+    try{
+      const res = await apiCall('evaluation.get', { lookbackMonths, targetMonth });
+      evalCache = res.recommendations || [];
+      renderEval(res);
+      toast('Rekomendasi siap.');
+    }catch(e){
+      toast('Evaluation error: ' + (e.message || e));
+    }finally{
+      setOverlay(false);
+    }
+  }
+
+  function renderEval(res){
+    const recs = res.recommendations || [];
+    document.getElementById('kpiEvalItems').textContent = recs.length;
+    document.getElementById('kpiEvalHigh').textContent = res.summary?.high || 0;
+    const need = recs.filter(x => Number(x.SuggestedOrder||0) > 0);
+    document.getElementById('kpiEvalNeed').textContent = need.length;
+    document.getElementById('kpiEvalQty').textContent = numFmt(res.insight?.totalNeed || 0);
+
+    // insight
+    document.getElementById('evalInsightWindow').textContent = `Window: ${res.insight?.window || '-'}`;
+    const ul = document.getElementById('evalInsightList');
+    ul.innerHTML = (res.insight?.highlights || []).map(t => `<li>${escapeHtml(t)}</li>`).join('');
+
+    // chart
+    const top = res.charts?.topNeed || [];
+    renderEvalChart(top);
+
+    // table
+    renderEvalTable();
+  }
+
+  function renderEvalChart(topNeed){
+    const labels = (topNeed||[]).map(x => x.ItemCode);
+    const values = (topNeed||[]).map(x => x.Qty);
+
+    document.getElementById('evalTopNeedEmpty').style.display = (!topNeed || topNeed.length === 0) ? 'block' : 'none';
+
+    const ctx = document.getElementById('chartEvalTopNeed');
+    if(chartEval) chartEval.destroy();
+    chartEval = new Chart(ctx, {
+      type:'bar',
+      data:{ labels, datasets:[{ label:'Suggested Qty', data: values }] },
+      options:{
+        responsive:true,
+        plugins:{ legend:{ display:false } },
+        scales:{ x: chartAxisOpts(), y: chartAxisOpts() }
+      }
     });
-    render();
   }
 
-  function render(){
-    const main = document.getElementById('mainCard');
-    if (state.activeTab === 'dashboard'){
-      main.innerHTML = renderDashboard();
-    } else if (state.activeTab === 'inflow'){
-      main.innerHTML = renderTxTable('inflow');
-    } else if (state.activeTab === 'outbound'){
-      main.innerHTML = renderTxTable('outbound');
-    } else if (state.activeTab === 'goals'){
-      main.innerHTML = renderGoals();
-    }
-  }
+  function renderEvalTable(){
+    const q = document.getElementById('searchEval').value.trim().toLowerCase();
+    const tb = document.getElementById('evalTbody');
 
-  function AVG_MONTHS_FOR_FORECAST_UI(){
-    return AVG_MONTHS_FOR_FORECAST;
-  }
-
-  function renderDashboard(){
-    const s = state.summary || {};
-    return `
-      <h2>Dashboard</h2>
-      <div class="muted">Ringkasan keuangan kamu, plus indikator forecasting sederhana berbasis rata-rata net bulanan.</div>
-
-      <div class="kpis">
-        <div class="kpi">
-          <div class="label">Total Inflow</div>
-          <div class="value">${money(s.totalIn)}</div>
-        </div>
-        <div class="kpi">
-          <div class="label">Total Outbound</div>
-          <div class="value">${money(s.totalOut)}</div>
-        </div>
-        <div class="kpi">
-          <div class="label">Balance Saat Ini</div>
-          <div class="value">${money(s.balance)}</div>
-        </div>
-      </div>
-
-      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center;">
-        <span class="tag purple">Avg Net/Bulan (≈${AVG_MONTHS_FOR_FORECAST_UI()} bulan)</span>
-        <span class="tag">${money(s.avgMonthlyNet)}</span>
-        <span class="muted">*dipakai untuk proyeksi goals</span>
-      </div>
-
-      <div class="grid" style="grid-template-columns:1fr 1fr; margin-top:14px;">
-        <div class="card" style="box-shadow:none;">
-          <h2>Transaksi Terbaru (Inflow)</h2>
-          ${renderMiniList(state.inflow.slice(0,6), 'inflow')}
-        </div>
-        <div class="card" style="box-shadow:none;">
-          <h2>Transaksi Terbaru (Outbound)</h2>
-          ${renderMiniList(state.outbound.slice(0,6), 'outbound')}
-        </div>
-      </div>
-    `;
-  }
-
-  function renderMiniList(list, type){
-    if (!list || list.length === 0) return `<div class="muted" style="margin-top:8px;">Belum ada data.</div>`;
-    return `
-      <table>
-        <thead><tr>
-          <th>Tanggal</th><th>Kategori</th><th>Amount</th>
-        </tr></thead>
-        <tbody>
-          ${list.map(x=>`
-            <tr>
-              <td>${esc(x.date)}</td>
-              <td>${esc(x.category || '-')}</td>
-              <td><b>${money(x.amount)}</b></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      <div style="margin-top:10px; display:flex; gap:10px; justify-content:flex-end;">
-        <button class="btn" onclick="switchTab('${type === 'inflow' ? 'inflow' : 'outbound'}')">Lihat semua</button>
-      </div>
-    `;
-  }
-
-  function renderTxTable(type){
-    const title = type === 'inflow' ? 'Cash Inflow' : 'Cash Outbound';
-    const list = type === 'inflow' ? state.inflow : state.outbound;
-
-    return `
-      <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap;">
-        <div>
-          <h2 style="margin-bottom:6px;">${title}</h2>
-          <div class="muted">Tambah, edit, hapus transaksi tanpa perlu buka database manual.</div>
-        </div>
-        <button class="btn primary" onclick="openTxModal('${type}')">+ Tambah</button>
-      </div>
-
-      <div style="margin-top:12px;">
-        <table>
-          <thead>
-            <tr>
-              <th>Tanggal</th>
-              <th>Kategori</th>
-              <th>Catatan</th>
-              <th>Amount</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${(list && list.length ? list.map(tx => `
-              <tr>
-                <td>${esc(tx.date)}</td>
-                <td>${esc(tx.category || '-')}</td>
-                <td>${esc(tx.note || '-')}</td>
-                <td><b>${money(tx.amount)}</b></td>
-                <td>
-                  <div class="rowActions">
-                    <button class="btn" onclick="openTxModal('${type}', '${tx.txId}')">Edit</button>
-                    <button class="btn danger" onclick="deleteTx('${type}','${tx.txId}')">Hapus</button>
-                  </div>
-                </td>
-              </tr>
-            `).join('') : `<tr><td colspan="5" class="muted">Belum ada data.</td></tr>`)}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-
-  function renderGoals(){
-    return `
-      <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap;">
-        <div>
-          <h2 style="margin-bottom:6px;">Forecasting Goals</h2>
-          <div class="muted">
-            Input target tabungan (goalAmount + targetDate). Sistem menghitung:
-            required net/bulan & proyeksi berdasarkan rata-rata net bulanan.
-          </div>
-        </div>
-        <button class="btn primary" onclick="openGoalModal()">+ Tambah Goal</button>
-      </div>
-
-      <div style="margin-top:12px;">
-        <table>
-          <thead>
-            <tr>
-              <th>Goal</th>
-              <th>Target</th>
-              <th>Required Net/Bulan</th>
-              <th>Proyeksi</th>
-              <th>Status</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${(state.goals && state.goals.length ? state.goals.map(g => `
-              <tr>
-                <td>
-                  <b>${esc(g.goalName)}</b><br/>
-                  <span class="muted">Target date: ${esc(g.targetDate)}</span>
-                </td>
-                <td><b>${money(g.goalAmount)}</b></td>
-                <td>${money(g.requiredMonthlyNet || 0)}</td>
-                <td>
-                  <span class="muted">Projected @ target:</span><br/>
-                  <b>${money(g.projectedBalanceAtTarget || 0)}</b>
-                </td>
-                <td>${esc(g.status || '-')}</td>
-                <td>
-                  <div class="rowActions">
-                    <button class="btn" onclick="recalcGoal('${g.goalId}')">Recalc</button>
-                    <button class="btn danger" onclick="deleteGoal('${g.goalId}')">Hapus</button>
-                  </div>
-                </td>
-              </tr>
-            `).join('') : `<tr><td colspan="6" class="muted">Belum ada goals.</td></tr>`)}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-
-  // =========================
-  // Quick Add
-  // =========================
-  async function quickAdd(){
-    const date = document.getElementById('qaDate').value || todayISO();
-    const amount = Number(document.getElementById('qaAmount').value);
-    const category = document.getElementById('qaCategory').value.trim();
-    const note = document.getElementById('qaNote').value.trim();
-
-    const type = (state.activeTab === 'outbound') ? 'outbound' : 'inflow';
-    if (!amount || amount <= 0) return toast('Amount harus > 0', 'bad');
-
-    showLoader('Menyimpan…', 'Menulis transaksi ke database…');
-    try{
-      const row = await apiAddTransaction(type, { date, amount, category, note });
-
-      if (type === 'inflow') state.inflow.unshift(row);
-      else state.outbound.unshift(row);
-
-      state.summary = await apiGetSummary();
-
-      render();
-      toast('Transaksi ditambahkan ✅', 'good');
-      document.getElementById('qaAmount').value = '';
-      document.getElementById('qaCategory').value = '';
-      document.getElementById('qaNote').value = '';
-    } catch(e){
-      toast(e.message || String(e), 'bad');
-      console.error(e);
-    } finally {
-      hideLoader();
-    }
-  }
-
-  // =========================
-  // Transaction modal (Add/Edit)
-  // =========================
-  function openTxModal(type, txId=null){
-    const isEdit = Boolean(txId);
-    const list = type === 'inflow' ? state.inflow : state.outbound;
-    const tx = isEdit ? list.find(x => x.txId === txId) : { date: todayISO(), amount:'', category:'', note:'' };
-
-    openModal(
-      (isEdit ? 'Edit' : 'Tambah') + (type === 'inflow' ? ' Inflow' : ' Outbound'),
-      `
-        <div class="formGrid">
-          <div>
-            <label>Tanggal</label>
-            <input id="mDate" type="date" value="${esc(tx.date || todayISO())}" />
-          </div>
-          <div>
-            <label>Amount</label>
-            <input id="mAmount" type="number" min="0" step="1" value="${esc(tx.amount || '')}" placeholder="contoh: 50000" />
-          </div>
-          <div>
-            <label>Kategori</label>
-            <input id="mCategory" value="${esc(tx.category || '')}" placeholder="contoh: Gaji / Makan" />
-          </div>
-          <div>
-            <label>Catatan</label>
-            <input id="mNote" value="${esc(tx.note || '')}" placeholder="opsional" />
-          </div>
-        </div>
-        <div class="footerActions">
-          <button class="btn" onclick="closeModal()">Batal</button>
-          <button class="btn primary" onclick="${isEdit ? `saveTxEdit('${type}','${txId}')` : `saveTxAdd('${type}')`}">
-            Simpan
-          </button>
-        </div>
-      `
+    let rows = (evalCache || []).slice();
+    if (q) rows = rows.filter(r =>
+      (r.ItemCode||'').toLowerCase().includes(q) ||
+      (r.ItemName||'').toLowerCase().includes(q)
     );
+
+    document.getElementById('evalEmpty').style.display = (rows.length===0) ? 'block' : 'none';
+
+    tb.innerHTML = rows.map(r => `
+      <tr>
+        <td>
+          <div class="mono" style="font-weight:900;">${escapeHtml(r.ItemCode||'')}</div>
+          <div class="muted" style="font-size:12px;">${escapeHtml(r.ItemName||'')}</div>
+        </td>
+        <td class="mono right">${numFmt(r.Stock)}</td>
+        <td class="mono right">${numFmt(r.ROP)}</td>
+        <td class="mono right">${numFmt(r.ForecastNextMonth)}</td>
+        <td class="mono right" style="font-weight:900;">${numFmt(r.SuggestedOrder)}</td>
+        <td>${prioTag(r.Priority)}</td>
+        <td class="muted">${escapeHtml(r.Reason||'')}</td>
+      </tr>
+    `).join('');
   }
 
-  async function saveTxAdd(type){
-    const payload = {
-      date: document.getElementById('mDate').value,
-      amount: Number(document.getElementById('mAmount').value),
-      category: document.getElementById('mCategory').value.trim(),
-      note: document.getElementById('mNote').value.trim()
-    };
-    showLoader('Menyimpan…','Tambah transaksi…');
+  // ====== Boot ======
+  function seedForms(){
+    document.getElementById('inDate').value = todayISO();
+    document.getElementById('usDate').value = todayISO();
+    document.getElementById('wipInDate').value = todayISO();
+  }
+
+  (async function boot(){
+    setUserPill();
+
+    // Enter to login
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' && !document.getElementById('loginView').classList.contains('hidden')){
+        login();
+      }
+    });
+    // Restore session (Supabase)
     try{
-      const row = await apiAddTransaction(type, payload);
+      const s = ensureSupabase();
+      const { data: sessData } = await s.auth.getSession();
+      if(sessData && sessData.session){
+        token = sessData.session.access_token || '';
+        if(token) localStorage.setItem('inv_token', token);
 
-      if (type === 'inflow') state.inflow.unshift(row);
-      else state.outbound.unshift(row);
+        setOverlay(true, 'Memulihkan sesi...');
+        try{
+          const res = await apiCall('me', {});
+          if(res.ok){
+            me = res.user;
+            setUserPill();
 
-      state.summary = await apiGetSummary();
+            document.getElementById('loginView').classList.add('hidden');
+            document.getElementById('mainView').classList.remove('hidden');
 
-      closeModal();
-      render();
-      toast('Tersimpan ✅', 'good');
-    } catch(e){
-      toast(e.message || String(e), 'bad');
-      console.error(e);
-    } finally {
-      hideLoader();
+            initMonthPicker();
+
+            const lastPage = localStorage.getItem('inv_last_page') || 'ops';
+            showPage(lastPage);
+
+            const lastTab = localStorage.getItem('inv_last_tab') || 'dashboard';
+            showTab(lastTab);
+
+            await refreshAll();
+          } else {
+            logout(true);
+          }
+        }catch(e){
+          logout(true);
+        }finally{
+          setOverlay(false);
+        }
+      }
+    }catch(e){
+      // ignore
     }
-  }
-
-  async function saveTxEdit(type, txId){
-    const payload = {
-      date: document.getElementById('mDate').value,
-      amount: Number(document.getElementById('mAmount').value),
-      category: document.getElementById('mCategory').value.trim(),
-      note: document.getElementById('mNote').value.trim()
-    };
-    showLoader('Menyimpan…','Update transaksi…');
-    try{
-      await apiUpdateTransaction(type, txId, payload);
-
-      const list = type === 'inflow' ? state.inflow : state.outbound;
-      const idx = list.findIndex(x => x.txId === txId);
-      if (idx >= 0) list[idx] = { ...list[idx], ...payload };
-
-      state.summary = await apiGetSummary();
-
-      closeModal();
-      render();
-      toast('Diupdate ✅', 'good');
-    } catch(e){
-      toast(e.message || String(e), 'bad');
-      console.error(e);
-    } finally {
-      hideLoader();
     }
-  }
-
-  async function deleteTx(type, txId){
-    if (!confirm('Yakin hapus transaksi ini?')) return;
-    showLoader('Menghapus…','Buang transaksi…');
-    try{
-      await apiDeleteTransaction(type, txId);
-
-      if (type === 'inflow') state.inflow = state.inflow.filter(x => x.txId !== txId);
-      else state.outbound = state.outbound.filter(x => x.txId !== txId);
-
-      state.summary = await apiGetSummary();
-
-      render();
-      toast('Dihapus ✅', 'good');
-    } catch(e){
-      toast(e.message || String(e), 'bad');
-      console.error(e);
-    } finally {
-      hideLoader();
-    }
-  }
-
-  // =========================
-  // Goals modal (Add)
-  // =========================
-  function openGoalModal(){
-    openModal('Tambah Goal', `
-      <div class="formGrid">
-        <div>
-          <label>Nama Goal</label>
-          <input id="gName" placeholder="contoh: Dana Darurat" />
-        </div>
-        <div>
-          <label>Target Amount</label>
-          <input id="gAmount" type="number" min="0" step="1" placeholder="contoh: 10000000" />
-        </div>
-        <div>
-          <label>Target Date</label>
-          <input id="gDate" type="date" value="${todayISO()}" />
-        </div>
-        <div>
-          <label>Catatan</label>
-          <input id="gNote" placeholder="opsional (tidak disimpan, sekadar pengingat UI)" />
-        </div>
-      </div>
-      <div class="footerActions">
-        <button class="btn" onclick="closeModal()">Batal</button>
-        <button class="btn primary" onclick="saveGoal()">Simpan</button>
-      </div>
-    `);
-  }
-
-  async function saveGoal(){
-    const payload = {
-      goalName: document.getElementById('gName').value.trim(),
-      goalAmount: Number(document.getElementById('gAmount').value),
-      targetDate: document.getElementById('gDate').value
-    };
-    if (!payload.goalName) return toast('Nama goal wajib.', 'bad');
-    if (!payload.goalAmount || payload.goalAmount <= 0) return toast('Target amount harus > 0', 'bad');
-    if (!payload.targetDate) return toast('Target date wajib.', 'bad');
-
-    showLoader('Menyimpan Goal…','Hitung proyeksi…');
-    try{
-      // ensure summary is up-to-date
-      state.summary = await apiGetSummary();
-
-      const goal = await apiAddGoal(payload);
-      const calc = computeForecast(payload.goalAmount, payload.targetDate);
-      await apiUpdateGoalCalc(goal.goalId, calc);
-
-      // update local
-      const merged = { ...goal,
-        lastCalcAt: new Date().toISOString(),
-        currentBalanceAtCalc: calc.currentBalance,
-        monthsRemainingAtCalc: calc.monthsRemaining,
-        requiredMonthlyNet: calc.requiredMonthlyNet,
-        projectedMonthlyNet: calc.projectedMonthlyNet,
-        projectedBalanceAtTarget: calc.projectedBalanceAtTarget,
-        status: calc.status
-      };
-      state.goals.unshift(merged);
-
-      closeModal();
-      render();
-      toast('Goal ditambahkan ✅', 'good');
-    } catch(e){
-      toast(e.message || String(e), 'bad');
-      console.error(e);
-    } finally {
-      hideLoader();
-    }
-  }
-
-  async function recalcGoal(goalId){
-    showLoader('Recalc…','Menghitung ulang proyeksi…');
-    try{
-      state.summary = await apiGetSummary();
-      const goal = state.goals.find(g => g.goalId === goalId);
-      if (!goal) throw new Error('Goal tidak ditemukan di UI.');
-
-      const calc = computeForecast(goal.goalAmount, goal.targetDate);
-      await apiUpdateGoalCalc(goalId, calc);
-
-      // reload goals (biar konsisten)
-      state.goals = await apiListGoals();
-
-      render();
-      toast('Proyeksi diperbarui ✅', 'good');
-    } catch(e){
-      toast(e.message || String(e), 'bad');
-      console.error(e);
-    } finally {
-      hideLoader();
-    }
-  }
-
-  async function deleteGoal(goalId){
-    if (!confirm('Yakin hapus goal ini?')) return;
-    showLoader('Menghapus…','Buang goal…');
-    try{
-      await apiDeleteGoal(goalId);
-      state.goals = state.goals.filter(x => x.goalId !== goalId);
-      render();
-      toast('Goal dihapus ✅', 'good');
-    } catch(e){
-      toast(e.message || String(e), 'bad');
-      console.error(e);
-    } finally {
-      hideLoader();
-    }
-  }
-
-  // =========================
-  // Boot
-  // =========================
-  (function init(){
-    document.getElementById('loginView').style.display = 'none';
-    document.getElementById('appView').style.display = 'none';
-    autoLogin();
   })();
-  </script>
+</script>
 
 </body>
 </html>
